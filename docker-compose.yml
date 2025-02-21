@@ -1,0 +1,13 @@
+services:
+  frontend:
+    build: ./services/frontend
+    ports:
+      - "3000:3000"
+  data-service:
+    build: ./services/data-service
+    ports:
+      - "3001:3001"
+  simulation-engine:
+    build: ./services/simulation-engine
+    ports:
+      - "3002:3002"
