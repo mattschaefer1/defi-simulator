@@ -5,6 +5,7 @@ export default class LPHistorical extends Model {
     return super.init({
       timestamp: {
         type: DataTypes.DATE,
+        allowNull: false,
         primaryKey: true
       },
       pool_address: {

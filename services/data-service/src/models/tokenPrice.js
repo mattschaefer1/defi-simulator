@@ -5,6 +5,7 @@ export default class TokenPrice extends Model {
     return super.init({
       timestamp: {
         type: DataTypes.DATE,
+        allowNull: false,
         primaryKey: true
       },
       token_symbol: {
@@ -16,7 +17,8 @@ export default class TokenPrice extends Model {
         }
       },
       price_usd: {
-        type: DataTypes.DECIMAL(18, 6)
+        type: DataTypes.DECIMAL(18, 6),
+        allowNull: false,
       }
     }, {
       sequelize,
