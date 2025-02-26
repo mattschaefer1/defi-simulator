@@ -1,7 +1,4 @@
 import express from 'express';
-import APYHistory from '../models/apyHistory.js';
-import PriceHistory from '../models/priceHistory.js';
-import PoolHistory from '../models/poolHistory.js';
 
 const router = express.Router();
 
