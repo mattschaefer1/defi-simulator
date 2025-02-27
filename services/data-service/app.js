@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import morgan from 'morgan';
 import dataRoutes from './src/routes/dataRoutes.js';
 import { sequelize, models } from './src/models/index.js';
+import { fetchAPYTVLData, fetchPriceData, fetchPoolData } from './src/services/dataFetcher.js';
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -30,6 +31,11 @@ app.locals.models = models;
 
 // Routes
 app.use('/api/data', dataRoutes);
+
+// Fetch data
+//fetchAPYTVLData();
+//fetchPriceData();
+//fetchPoolData();
 
 // Error handling middleware
 app.use((err, req, res, next) => {
