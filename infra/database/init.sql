@@ -57,3 +57,10 @@ INSERT INTO tokens (token_symbol) VALUES
   ('USDC'),
   ('DAI'),
   ('WBTC');
+
+-- Insert initial pool data
+INSERT INTO pools (pool_address, token0_symbol, token1_symbol) VALUES
+  ('0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640', 'USDC', 'WETH'),
+  ('0x99ac8ca7087fa4a2a1fb6357269965a2014abc35', 'WBTC', 'USDC'),
+  ('0xcbcdf9626bc03e24f779434178a73a0b4bad62ed', 'WBTC', 'WETH'),
+  ('0x5777d92f208679db4b9778590fa3cab3ac9e2168', 'DAI', 'USDC');
