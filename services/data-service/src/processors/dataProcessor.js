@@ -1,12 +1,31 @@
 /**
+ * Converts date to ISO string.
+ * @param {string|number} date - Date from API response.
+ * @returns {string} ISO date string. 
+ */
+export function convertToISOString(date) {
+  return new Date(date).toISOString();
+}
+
+/**
+ * Rounds a number to specified number of decimal places.
+ * @param {number} num - Number to round.
+ * @param {number} numOfPlaces - Number of decimal places.
+ * @returns {number} Rounded number. 
+ */
+export function roundToDecimal(num, numOfPlaces) {
+  return parseFloat(num.toFixed(numOfPlaces));
+}
+
+/**
  * Processes raw pool data from DeFi Llama.
  * @param {Array} rawData - Raw data array from the API.
  * @returns {Array} Processed APY data.
  */
 export function processAPYData(rawData) {
   return rawData.map((day) => ({
-    timestamp: new Date(day.timestamp.substring(0, 10)).toISOString(),  // Convert to 12AM UTC
-    apy: day.apy,
+    timestamp: convertToISOString(day.timestamp.substring(0, 10)),
+    apyPercentage: roundToDecimal(day.apy, 2),
   }));
 }
 
@@ -17,8 +36,8 @@ export function processAPYData(rawData) {
  */
 export function processTVLData(rawData) {
   return rawData.map((day) => ({
-    timestamp: new Date(day.timestamp.substring(0, 11)).toISOString(),  // Convert to 12AM UTC
-    tvlUsd: day.tvlUsd,
+    timestamp: convertToISOString(day.timestamp.substring(0, 10)),
+    tvlUsd: roundToDecimal(day.tvlUsd, 6),
   }));
 }
 
@@ -29,8 +48,8 @@ export function processTVLData(rawData) {
  */
 export function processPriceData(rawData) {
   return rawData.map((day) => ({
-    timestamp: new Date(day[0]).toISOString(),
-    price: day[1],
+    timestamp: convertToISOString(day[0]),
+    priceUsd: roundToDecimal(day[1], 6),
   }));
 }
 
@@ -41,8 +60,8 @@ export function processPriceData(rawData) {
  */
 export function processUniswapPoolData(rawData) {
   return rawData.map((day) => ({
-    timestamp: new Date(day.date * 1000).toISOString(),
-    feesUSD: day.feesUSD,
-    volumeUSD: day.volumeUSD,
+    timestamp: convertToISOString(day.date * 1000),
+    feesUSD: roundToDecimal(parseFloat(day.feesUSD), 6),
+    volumeUSD: roundToDecimal(parseFloat(day.volumeUSD), 6),
   }));
 }

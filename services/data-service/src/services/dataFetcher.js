@@ -37,7 +37,7 @@ async function fetchPriceData(numDaysAgo = '1') {
         const url = process.env.COINGECKO_API_URL + address + '/market_chart';
         const response = await axios.get(url, {
           headers: { 'x-cg-demo-api-key': process.env.COINGECKO_API_KEY },
-          params: { vs_currency: 'usd', days: numDaysAgo, interval: 'daily', precision: '6' }
+          params: { vs_currency: 'usd', days: numDaysAgo, interval: 'daily' }
         });
         const processedData = processPriceData(response.data.prices);
         pricesData[tokenName] = processedData;
