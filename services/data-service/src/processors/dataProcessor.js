@@ -18,11 +18,15 @@ export function roundToDecimal(num, numOfPlaces) {
 }
 
 /**
- * Processes raw pool data from DeFi Llama.
+ * Processes raw daily pool data from DeFi Llama.
+ * The last array element contains current data as of query time.
+ * All other array elements are dated at previous day close.
+ * Therefore, the last element of the array is excluded.
  * @param {Array} rawData - Raw data array from the API.
- * @returns {Array} Processed APY data.
+ * @returns {Array} Processed daily APY data.
  */
 export function processAPYData(rawData) {
+  rawData.pop();
   return rawData.map((day) => ({
     timestamp: convertToISOString(day.timestamp.substring(0, 10)),
     apyPercentage: roundToDecimal(day.apy, 2),
@@ -30,11 +34,15 @@ export function processAPYData(rawData) {
 }
 
 /**
- * Processes raw pool data from DeFi Llama.
+ * Processes raw daily pool data from DeFi Llama.
+ * The last array element contains current data as of query time.
+ * All other array elements are dated at previous day close.
+ * Therefore, the last element of the array is excluded.
  * @param {Array} rawData - Raw data array from the API.
- * @returns {Array} Processed TVL data.
+ * @returns {Array} Processed daily TVL data.
  */
 export function processTVLData(rawData) {
+  rawData.pop();
   return rawData.map((day) => ({
     timestamp: convertToISOString(day.timestamp.substring(0, 10)),
     tvlUsd: roundToDecimal(day.tvlUsd, 6),
@@ -42,11 +50,15 @@ export function processTVLData(rawData) {
 }
 
 /**
- * Processes raw token price data from CoinGecko.
+ * Processes raw daily token price data from CoinGecko.
+ * The last array element contains current data as of query time.
+ * All other array elements are dated at previous day open.
+ * Therefore, the last element of the array is excluded.
  * @param {Array} rawData - Raw price data array (each item is [timestamp, price]).
  * @returns {Array} Processed token price data.
  */
 export function processPriceData(rawData) {
+  rawData.pop();
   return rawData.map((day) => ({
     timestamp: convertToISOString(day[0]),
     priceUsd: roundToDecimal(day[1], 6),
@@ -54,12 +66,12 @@ export function processPriceData(rawData) {
 }
 
 /**
- * Processes raw pool day data from Uniswap Subgraph.
+ * Processes raw daily pool data from Uniswap Subgraph.
  * @param {Array} rawData - Raw data array from the GraphQL query.
- * @returns {Array} Processed pool day data.
+ * @returns {Array} Processed daily pool data arranged from oldest to most recent.
  */
 export function processUniswapPoolData(rawData) {
-  return rawData.map((day) => ({
+  return rawData.reverse().map((day) => ({
     timestamp: convertToISOString(day.date * 1000),
     feesUSD: roundToDecimal(parseFloat(day.feesUSD), 6),
     volumeUSD: roundToDecimal(parseFloat(day.volumeUSD), 6),
