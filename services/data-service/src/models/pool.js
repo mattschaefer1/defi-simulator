@@ -10,14 +10,14 @@ export default class Pool extends Model {
       token0_symbol: {
         type: DataTypes.TEXT,
         references: {
-          model: 'Token',
+          model: 'tokens',
           key: 'token_symbol'
         }
       },
       token1_symbol: {
         type: DataTypes.TEXT,
         references: {
-          model: 'Token',
+          model: 'tokens',
           key: 'token_symbol'
         }
       }

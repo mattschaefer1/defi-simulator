@@ -12,7 +12,7 @@ export default class TokenPrice extends Model {
         type: DataTypes.TEXT,
         primaryKey: true,
         references: {
-          model: 'Token',
+          model: 'tokens',
           key: 'token_symbol'
         }
       },

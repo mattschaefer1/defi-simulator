@@ -12,7 +12,7 @@ export default class LPHistorical extends Model {
         type: DataTypes.TEXT,
         primaryKey: true,
         references: {
-          model: 'Pool',
+          model: 'pools',
           key: 'pool_address'
         }
       },
