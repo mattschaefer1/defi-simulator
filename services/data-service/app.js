@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import dataRoutes from './src/routes/dataRoutes.js';
 import { sequelize, models } from './src/models/index.js';
 import { fetchPoolData, fetchPriceData, fetchUniswapPoolData } from './src/services/dataFetcher.js';
+import { processPoolDataResponse, processPriceDataResponse, processUniswapPoolDataResponse } from './src/processors/dataProcessor.js';
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -33,9 +34,19 @@ app.locals.models = models;
 app.use('/api/data', dataRoutes);
 
 // Fetch data
-//fetchPoolData();
-//fetchPriceData();
-//fetchUniswapPoolData();
+const apyTvlData = await fetchPoolData();
+const priceData = await fetchPriceData('365');
+const uniswapPoolsData = await fetchUniswapPoolData(365);
+
+// Process data
+const [processedApyData, processedTvlData] = processPoolDataResponse(apyTvlData)
+const processedPriceData = processPriceDataResponse(priceData);
+const processedUniswapPoolsData = processUniswapPoolDataResponse(uniswapPoolsData);
+
+console.log('APY data fetched and processed:', processedApyData);
+console.log('TVL data fetched and processed:', processedTvlData);
+console.log('Price data fetched and processed:', processedPriceData);
+console.log('Pool data fetched and processed:', processedUniswapPoolsData);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
