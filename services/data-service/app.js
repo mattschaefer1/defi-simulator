@@ -35,7 +35,7 @@ app.use('/api/data', dataRoutes);
 
 // Fetch data
 const apyTvlData = await fetchPoolData();
-const priceData = await fetchPriceData('365');
+const priceData = await fetchPriceData(365);
 const uniswapPoolsData = await fetchUniswapPoolData(365);
 
 // Process data
