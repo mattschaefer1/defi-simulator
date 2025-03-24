@@ -163,6 +163,12 @@ export function findMissingDates(data) {
   return missingDatesByKey;
 }
 
+/**
+ * Calculates a date that is a specified number of days before the given date.
+ * @param {Date} date - The starting date from which to subtract days.
+ * @param {number} numDays - The number of days to subtract from the starting date.
+ * @returns {string} The ISO string representation of the resulting date (e.g., "2023-10-25T00:00:00.000Z").
+ */
 function findDateBefore(date, numDays) {
   return new Date(
     Date.UTC(
@@ -173,6 +179,12 @@ function findDateBefore(date, numDays) {
   ).toISOString();
 }
 
+/**
+ * Calculates a date that is a specified number of days after the given date.
+ * @param {Date} date - The starting date from which to add days.
+ * @param {number} numDays - The number of days to add to the starting date.
+ * @returns {string} The ISO string representation of the resulting date (e.g., "2023-10-25T00:00:00.000Z").
+ */
 function findDateAfter(date, numDays) {
   return new Date(
     Date.UTC(
@@ -183,6 +195,18 @@ function findDateAfter(date, numDays) {
   ).toISOString();
 }
 
+/**
+ * Finds up to two valid dates before and after a missing date within a specified maximum number of days.
+ *
+ * This function searches for dates in the provided timestamps array that occur before and after
+ * the missing date, stopping when it finds up to two of each or reaches the maxDays limit.
+ *
+ * @param {Date} missingDate - The date for which to find surrounding valid dates.
+ * @param {string[]} timestamps - An array of existing timestamp strings in ISO format to search within.
+ * @param {number} [maxDays=7] - The maximum number of days to look before and after the missing date (optional, defaults to 7).
+ * @returns {[string[], string[]]} An array containing two arrays: the first with up to two ISO timestamp strings
+ *                                 before the missing date, and the second with up to two after it.
+ */
 function findValidDates(missingDate, timestamps, maxDays = 7) {
   const beforeDates = [];
   const afterDates = [];
@@ -199,6 +223,18 @@ function findValidDates(missingDate, timestamps, maxDays = 7) {
   return [beforeDates.slice(0, 2), afterDates.slice(0, 2)];
 }
 
+/**
+ * Retrieves metrics from records corresponding to the provided valid dates.
+ *
+ * This function aggregates metric values (excluding the 'timestamp' key) from records
+ * mapped to the given timestamps, organizing them by metric name.
+ *
+ * @param {string[]} validDates - An array of timestamp strings in ISO format to look up in the recordMap.
+ * @param {Map<string, Object>} recordMap - A Map where keys are ISO timestamp strings and values are
+ *                                          record objects containing metric key-value pairs.
+ * @returns {Object} An object where each key is a metric name and each value is an array of
+ *                   corresponding metric values from the records.
+ */
 function getMetrics(validDates, recordMap) {
   const metrics = {};
   validDates.forEach((timestamp) => {
@@ -215,6 +251,21 @@ function getMetrics(validDates, recordMap) {
   return metrics;
 }
 
+/**
+ * Simulates metrics for a missing date based on metrics from before and after dates.
+ *
+ * For each metric present in either metricsBefore or metricsAfter:
+ * - If both have values, it calculates a random value between their averages.
+ * - If only one has values, it uses that average.
+ * - If neither has values, it defaults to 0.
+ *
+ * @param {Object} metricsBefore - An object where keys are metric names and values are arrays of
+ *                                 metric values from dates before the missing date.
+ * @param {Object} metricsAfter - An object where keys are metric names and values are arrays of
+ *                                metric values from dates after the missing date.
+ * @returns {Object} An object where each key is a metric name and each value is a simulated
+ *                   integer metric value.
+ */
 function simulateMetrics(metricsBefore, metricsAfter) {
   const simulatedMetrics = {};
   const allMetrics = new Set([...Object.keys(metricsBefore), ...Object.keys(metricsAfter)]);
@@ -242,6 +293,21 @@ function simulateMetrics(metricsBefore, metricsAfter) {
   return simulatedMetrics;
 }
 
+/**
+ * Returns a new object based on the provided data, with additional records for the specified missing dates.
+ *
+ * This function processes each key in missingDates, adding new records with simulated metrics for each
+ * missing date. Metrics are simulated using nearby dates' data if available; otherwise, they default to 0.
+ * The resulting records are sorted by timestamp.
+ *
+ * @param {Object} data - The original data, structured as { key: [{ timestamp, ...metrics }, ...] },
+ *                        where each record has a 'timestamp' string and metric properties.
+ * @param {Object} missingDates - An object structured as { key: [dateString, ...] }, where each key
+ *                                corresponds to a key in data, and dateString values are ISO date strings.
+ * @returns {Object} A new object with the same keys as those processed from missingDates, containing
+ *                   the original records plus new records for the missing dates with simulated metrics.
+ *                   If no missing dates are processed, returns the original data.
+ */
 export function fillMissingDates(data, missingDates) {
   const filledData = {};
   Object.entries(missingDates).forEach(([key, dates]) => {
