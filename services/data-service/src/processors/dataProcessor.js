@@ -83,12 +83,12 @@ function formatUniswapPoolData(rawData) {
  *  @returns {Array} First element is array of APY data, second is object of TVL data for each pool.
  */
 export function processPoolDataResponse(apyTvlData) {
-  let processedApyData = [];
+  let processedApyData = {};
   const processedTvlData = {};
 
   Object.entries(apyTvlData).forEach(([poolName, data]) => {
     if (poolName === 'lidoEth') {
-      processedApyData = formatApyData(data);
+      processedApyData[poolName] = formatApyData(data);
     } else {
       processedTvlData[poolName] = formatTvlData(data);
     }
@@ -120,16 +120,160 @@ export function processUniswapPoolDataResponse(uniswapPoolsData) {
 /**
  * Trims data to specified maxLength.
  * @param {Object} data - Response data object.
- * @param {number} maxLength - Number of days worth of data (i.e., 356 days).
- * @returns {Object} Data trimmed to maxLength, or unchanged if less than maxLength.
+ * @param {number} maxLength - Number of days worth of data (i.e., 365 days).
+ * @returns {Object} Data trimmed to maxLength, or unchanged if all keys are within limit.
  */
 export function trimData(data, maxLength = 365) {
   const trimmedData = {};
   Object.entries(data).forEach(([key, value]) => {
-    const valLength = value.length;
-    if (valLength > maxLength) {
-      trimmedData[key] = value.slice(valLength - maxLength - 1);
+    trimmedData[key] = value.length > maxLength ? value.slice(-maxLength) : value;
+  });
+  return trimmedData;
+}
+
+/**
+ * Identifies missing dates in response data.
+ * @param {Object} data - Response data object.
+ * @returns {Object} Missing dates for each key in response data.
+ */
+export function findMissingDates(data) {
+  const missingDatesByKey = {};
+  for (const key in data) {
+    const records = data[key];
+    const dates = records
+      .map(r => {
+        const d = new Date(r.timestamp);
+        return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+      })
+      .sort((a, b) => a - b);
+
+    const missingDates = [];
+    for (let i = 0; i < dates.length - 1; i++) {
+      let expectedDate = new Date(dates[i].getTime());
+      expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
+      while (expectedDate < dates[i + 1]) {
+        missingDates.push(expectedDate.toISOString());
+        expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
+      }
+    }
+    if (missingDates.length > 0) {
+      missingDatesByKey[key] = missingDates;
+    }
+  }
+  return missingDatesByKey;
+}
+
+function findDateBefore(date, numDays) {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() - numDays
+    )
+  ).toISOString();
+}
+
+function findDateAfter(date, numDays) {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate() + numDays
+    )
+  ).toISOString();
+}
+
+function findValidDates(missingDate, timestamps, maxDays = 7) {
+  const beforeDates = [];
+  const afterDates = [];
+  for (let i = 1; i <= maxDays && (beforeDates.length < 2 || afterDates.length < 2); i++) {
+    if (beforeDates.length < 2) {
+      const beforeDay = findDateBefore(missingDate, i);
+      if (timestamps.includes(beforeDay)) beforeDates.push(beforeDay);
+    }
+    if (afterDates.length < 2) {
+      const afterDay = findDateAfter(missingDate, i);
+      if (timestamps.includes(afterDay)) afterDates.push(afterDay);
+    }
+  }
+  return [beforeDates.slice(0, 2), afterDates.slice(0, 2)];
+}
+
+function getMetrics(validDates, recordMap) {
+  const metrics = {};
+  validDates.forEach((timestamp) => {
+    const record = recordMap.get(timestamp);
+    if (record) {
+      Object.entries(record).forEach(([key, value]) => {
+        if (key !== 'timestamp') {
+          if (!metrics[key]) metrics[key] = [];
+          metrics[key].push(value);
+        }
+      });
     }
   });
-  return Object.keys(trimmedData).length > 0 ? trimmedData : data;
+  return metrics;
+}
+
+function simulateMetrics(metricsBefore, metricsAfter) {
+  const simulatedMetrics = {};
+  const allMetrics = new Set([...Object.keys(metricsBefore), ...Object.keys(metricsAfter)]);
+  
+  for (const metric of allMetrics) {
+    const beforeValues = metricsBefore[metric] || [];
+    const afterValues = metricsAfter[metric] || [];
+    let simulatedValue;
+
+    if (beforeValues.length > 0 && afterValues.length > 0) {
+      const avgBefore = beforeValues.reduce((a, b) => a + b, 0) / beforeValues.length;
+      const avgAfter = afterValues.reduce((a, b) => a + b, 0) / afterValues.length;
+      const min = Math.min(avgBefore, avgAfter);
+      const max = Math.max(avgBefore, avgAfter);
+      simulatedValue = Math.floor(Math.random() * (max - min) + min);
+    } else if (beforeValues.length > 0) {
+      simulatedValue = Math.floor(beforeValues.reduce((a, b) => a + b, 0) / beforeValues.length);
+    } else if (afterValues.length > 0) {
+      simulatedValue = Math.floor(afterValues.reduce((a, b) => a + b, 0) / afterValues.length);
+    } else {
+      simulatedValue = 0;
+    }
+    simulatedMetrics[metric] = simulatedValue;
+  }
+  return simulatedMetrics;
+}
+
+export function fillMissingDates(data, missingDates) {
+  const filledData = {};
+  Object.entries(missingDates).forEach(([key, dates]) => {
+    const records = [...data[key]];
+    const newRecords = [];
+    const recordMap = new Map(records.map(r => [r.timestamp, r]));
+    const timestamps = records.map(r => r.timestamp);
+
+    for (const date of dates) {
+      const missingDate = new Date(date);
+      const [validDatesBefore, validDatesAfter] = findValidDates(missingDate, timestamps);
+      if (validDatesBefore.length > 0 || validDatesAfter.length > 0) {
+        const metricsBefore = getMetrics(validDatesBefore, recordMap);
+        const metricsAfter = getMetrics(validDatesAfter, recordMap);
+        const simulatedMetrics = simulateMetrics(metricsBefore, metricsAfter);
+        newRecords.push({ timestamp: missingDate.toISOString(), ...simulatedMetrics });
+      } else {
+        console.warn(`No valid dates found for ${date} in ${key}`);
+        if (records.length === 0) {
+          console.error(`No data available for ${key}. Skipping.`);
+          continue;
+        }
+        const sampleRecord = records[0];
+        const simulatedMetrics = {};
+        Object.keys(sampleRecord).forEach(k => {
+          if (k !== 'timestamp') simulatedMetrics[k] = 0;
+        });
+        newRecords.push({ timestamp: missingDate.toISOString(), ...simulatedMetrics });
+      }
+    }
+
+    filledData[key] = [...records, ...newRecords].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  });
+  return Object.keys(filledData).length > 0 ? filledData : data;
 }

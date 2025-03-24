@@ -6,7 +6,7 @@ import morgan from 'morgan';
 import dataRoutes from './src/routes/dataRoutes.js';
 import { sequelize, models } from './src/models/index.js';
 import { fetchPoolData, fetchPriceData, fetchUniswapPoolData } from './src/services/dataFetcher.js';
-import {trimData, processPoolDataResponse, processPriceDataResponse, processUniswapPoolDataResponse } from './src/processors/dataProcessor.js';
+import {trimData, findMissingDates, fillMissingDates, processPoolDataResponse, processPriceDataResponse, processUniswapPoolDataResponse } from './src/processors/dataProcessor.js';
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -40,17 +40,33 @@ const uniswapPoolsData = await fetchUniswapPoolData(365);
 
 // Process data
 const trimmedApyTvlData = trimData(apyTvlData);
-const trimmedPriceData = trimData(priceData);
-const trimmedUniswapPoolsData = trimData(uniswapPoolsData);
 
 const [processedApyData, processedTvlData] = processPoolDataResponse(trimmedApyTvlData);
-const processedPriceData = processPriceDataResponse(trimmedPriceData);
-const processedUniswapPoolsData = processUniswapPoolDataResponse(trimmedUniswapPoolsData);
+const processedPriceData = processPriceDataResponse(priceData);
+const processedUniswapPoolsData = processUniswapPoolDataResponse(uniswapPoolsData);
 
-console.log('APY data fetched, trimmed, and processed:', processedApyData);
-console.log('TVL data fetched, trimmed, and processed:', processedTvlData);
-console.log('Price data fetched, trimmed, and processed:', processedPriceData);
-console.log('Pool data fetched, trimmed, and processed:', processedUniswapPoolsData);
+const missingApyDates = findMissingDates(processedApyData);
+const missingTvlDates = findMissingDates(processedTvlData);
+const missingPriceDates = findMissingDates(processedPriceData);
+const missingUniswapDates = findMissingDates(processedUniswapPoolsData);
+
+const filledApyData = Object.keys(missingApyDates).length > 0
+  ? fillMissingDates(processedApyData, missingApyDates)
+  : processedApyData;
+const filledTvlData = Object.keys(missingTvlDates).length > 0
+  ? fillMissingDates(processedTvlData, missingTvlDates)
+  : processedTvlData;
+const filledPriceData = Object.keys(missingPriceDates).length > 0
+  ? fillMissingDates(processedPriceData, missingPriceDates)
+  : processedPriceData;
+const filledUniswapPoolsData = Object.keys(missingUniswapDates).length > 0
+  ? fillMissingDates(processedUniswapPoolsData, missingUniswapDates)
+  : processedUniswapPoolsData;
+
+console.log('APY data fetched, trimmed, and processed:', filledApyData);
+console.log('TVL data fetched, trimmed, and processed:', filledTvlData);
+console.log('Price data fetched, trimmed, and processed:', filledPriceData);
+console.log('Pool data fetched, trimmed, and processed:', filledUniswapPoolsData);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
