@@ -116,3 +116,20 @@ export function processUniswapPoolDataResponse(uniswapPoolsData) {
     Object.entries(uniswapPoolsData).map(([poolName, data]) => [poolName, formatUniswapPoolData(data)])
   );
 }
+
+/**
+ * Trims data to specified maxLength.
+ * @param {Object} data - Response data object.
+ * @param {number} maxLength - Number of days worth of data (i.e., 356 days).
+ * @returns {Object} Data trimmed to maxLength, or unchanged if less than maxLength.
+ */
+export function trimData(data, maxLength = 365) {
+  const trimmedData = {};
+  Object.entries(data).forEach(([key, value]) => {
+    const valLength = value.length;
+    if (valLength > maxLength) {
+      trimmedData[key] = value.slice(valLength - maxLength - 1);
+    }
+  });
+  return Object.keys(trimmedData).length > 0 ? trimmedData : data;
+}
