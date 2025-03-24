@@ -24,12 +24,11 @@ function roundToDecimal(num, numOfPlaces) {
 
 /**
  * Formats raw daily pool data from DeFi Llama.
- * Excludes the last element, which contains current data as of query time.
  * @param {Array} rawData - Raw data array from the API.
  * @returns {Array} Processed daily APY data.
  */
 function formatApyData(rawData) {
-  const dataToProcess = rawData.slice(0, -1);
+  const dataToProcess = [...rawData];
   return dataToProcess.map((day) => ({
     timestamp: convertToISOString(day.timestamp.substring(0, 10)),
     apyPercentage: roundToDecimal(day.apy, 2),
@@ -38,12 +37,11 @@ function formatApyData(rawData) {
 
 /**
  * Formats raw daily pool data from DeFi Llama.
- * Excludes the last element, which contains current data as of query time.
  * @param {Array} rawData - Raw data array from the API.
  * @returns {Array} Processed daily TVL data.
  */
 function formatTvlData(rawData) {
-  const dataToProcess = rawData.slice(0, -1);
+  const dataToProcess = [...rawData];
   return dataToProcess.map((day) => ({
     timestamp: convertToISOString(day.timestamp.substring(0, 10)),
     tvlUsd: roundToDecimal(day.tvlUsd, 6),
@@ -52,14 +50,13 @@ function formatTvlData(rawData) {
 
 /**
  * Formats raw daily token price data from CoinGecko.
- * Excludes the last element, which contains current data as of query time.
  * @param {Array} rawData - Raw price data array (each item is [timestamp, price]).
  * @returns {Array} Processed token price data.
  */
 function formatPriceData(rawData) {
-  const dataToProcess = rawData.slice(0, -1);
+  const dataToProcess = [...rawData];
   return dataToProcess.map((day) => ({
-    timestamp: convertToISOString(day[0]),
+    timestamp: convertToISOString(day[0]).slice(0, 10) + "T00:00:00.000Z",
     priceUsd: roundToDecimal(day[1], 6),
   }));
 }
@@ -115,6 +112,40 @@ export function processUniswapPoolDataResponse(uniswapPoolsData) {
   return Object.fromEntries(
     Object.entries(uniswapPoolsData).map(([poolName, data]) => [poolName, formatUniswapPoolData(data)])
   );
+}
+
+/**
+ * Removes duplicate timestamps from each array within the given data object.
+ *
+ * This function processes an object where each key maps to an array of objects. Each object is expected
+ * to have a `timestamp` property (a value parseable by the Date constructor). For each array, the function:
+ * - Iterates over the array and records the last occurrence of each unique timestamp.
+ * - Filters the array to keep only the last occurrence of each duplicate timestamp.
+ * - Sorts the filtered array in ascending order based on the timestamp.
+ *
+ * @param {Object<string, Array<Object>>} data - An object whose properties are arrays of objects with a 
+ *                                               `timestamp` property.
+ * @returns {Object<string, Array<Object>>} A new object with the same keys as the input. Each array contains 
+ *                                          only the last occurrence of objects with duplicate timestamps, 
+ *                                          sorted by timestamp in ascending order.
+ */
+export function removeDuplicateTimestamps(data) {
+  const result = {};
+  for (const key in data) {
+    if (data.hasOwnProperty(key)) {
+      const array = data[key];
+      const lastOccurrences = new Map();
+      for (const element of array) {
+        const timestamp = element.timestamp;
+        lastOccurrences.set(timestamp, element);
+      }
+      const filteredArray = array.filter(
+        element => element === lastOccurrences.get(element.timestamp)
+      );
+      result[key] = filteredArray.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    }
+  }
+  return result;
 }
 
 /**
