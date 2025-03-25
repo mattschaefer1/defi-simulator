@@ -7,6 +7,7 @@ import dataRoutes from './src/routes/dataRoutes.js';
 import { sequelize, models } from './src/models/index.js';
 import { fetchPoolData, fetchPriceData, fetchUniswapPoolData } from './src/services/dataFetcher.js';
 import { trimData, removeDuplicateTimestamps, findMissingDates, fillMissingDates, formatLiquidityPoolData, addSymbolToPriceData, processPoolDataResponse, processPriceDataResponse, processUniswapPoolDataResponse } from './src/processors/dataProcessor.js';
+import { saveStakingData, saveTokenPriceData, saveLiquidityPoolData } from './src/savers/dataSaver.js';
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -74,9 +75,9 @@ const filledUniswapPoolsData = Object.keys(missingUniswapDates).length > 0
 const liquidityPoolData = formatLiquidityPoolData(filledTvlData, filledUniswapPoolsData);
 const tokenPriceData = addSymbolToPriceData(filledPriceData);
 
-console.log('APY data fetched and processed:', filledApyData);
-console.log('Price data fetched and processed:', tokenPriceData);
-console.log('Pool data fetched and processed:', liquidityPoolData);
+await saveStakingData(filledApyData, app);
+await saveTokenPriceData(tokenPriceData, app);
+await saveLiquidityPoolData(liquidityPoolData, app);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
