@@ -1,4 +1,5 @@
 import express from 'express';
+import cron from 'node-cron';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -32,8 +33,29 @@ app.locals.models = models;
 // Routes
 app.use('/api/data', dataRoutes);
 
-// Fetch and save data to database
-await dataHandler(app);
+// Fetch and save data to database (Daily at 1:00 AM UTC)
+let isRunning = false;
+cron.schedule('0 1 * * *', async () => {
+  if (isRunning) {
+    console.log('Previous run still in progress, skipping...');
+    return;
+  }
+
+  isRunning = true;
+  console.log(`Running daily data fetch at ${new Date().toISOString()}...`);
+
+  try {
+    await dataHandler(app);
+    console.log('Data fetch completed successfully.');
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  } finally {
+    isRunning = false;
+  }
+}, {
+  scheduled: true,
+  timezone: 'Etc/UTC',
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
