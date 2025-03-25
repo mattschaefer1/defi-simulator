@@ -1,3 +1,5 @@
+import { poolAddresses } from "../config/pools.js";
+
 /**
  * Converts date to ISO string.
  * @param {string|number} date - Date from API response.
@@ -373,4 +375,57 @@ export function fillMissingDates(data, missingDates) {
     filledData[key] = [...records, ...newRecords].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   });
   return Object.keys(filledData).length > 0 ? filledData : data;
+}
+
+/**
+ * Checks index alignment of TVL and Uniswap pool data (i.e., both objects contain the same dates).
+ * @param {Object} tvlData - TVL data for each pool.
+ * @param {Object} uniswapPoolsData - Uniswap data for each pool.
+ * @returns {boolean} True if the indexes of each object align, false otherwise.
+ */
+function checkTimestampAlignment(tvlData, uniswapPoolsData) {
+  for (const [poolName, data] of Object.entries(uniswapPoolsData)) {
+    if (!tvlData.hasOwnProperty(poolName)) {
+      console.error(`Pool ${poolName} not found in tvlData.`);
+      return false;
+    }
+    const tvlDataOfPool = tvlData[poolName];
+    if (data.length !== tvlDataOfPool.length) {
+      console.error(`Data length mismatch for pool ${poolName}: uniswapPoolsData has ${data.length}, tvlData has ${tvlDataOfPool.length}`);
+      return false;
+    }
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].timestamp !== tvlDataOfPool[i].timestamp) {
+        console.error(`Timestamp mismatch at index ${i} of pool ${poolName}: ${data[i].timestamp} !== ${tvlDataOfPool[i].timestamp}`);
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Adds daily TVL and pool addresses to each Uniswap pool's data.
+ * @param {Object} tvlData - TVL data for each pool.
+ * @param {Object} uniswapPoolsData - Uniswap data for each pool.
+ * @returns {Object} Uniswap pool data aligning with database schema.
+ */
+export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
+  const liquidityPoolData = {};
+  const isAligned = checkTimestampAlignment(tvlData, uniswapPoolsData);
+  if (isAligned) {
+    Object.entries(uniswapPoolsData).forEach(([poolName, data]) => {
+      const tvlDataOfPool = tvlData[poolName];
+      const poolAddress = poolAddresses[poolName];
+      liquidityPoolData[poolName] = data.map((poolDataForDay, i) => {
+        const tvlForDay = tvlDataOfPool[i];
+        return {
+          ...poolDataForDay,
+          poolAddress,
+          tvlUsd: tvlForDay['tvlUsd']
+        };
+      });
+    });
+  }
+  return liquidityPoolData;
 }

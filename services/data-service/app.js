@@ -6,7 +6,7 @@ import morgan from 'morgan';
 import dataRoutes from './src/routes/dataRoutes.js';
 import { sequelize, models } from './src/models/index.js';
 import { fetchPoolData, fetchPriceData, fetchUniswapPoolData } from './src/services/dataFetcher.js';
-import { trimData, removeDuplicateTimestamps, findMissingDates, fillMissingDates, processPoolDataResponse, processPriceDataResponse, processUniswapPoolDataResponse } from './src/processors/dataProcessor.js';
+import { trimData, removeDuplicateTimestamps, findMissingDates, fillMissingDates, formatLiquidityPoolData, processPoolDataResponse, processPriceDataResponse, processUniswapPoolDataResponse } from './src/processors/dataProcessor.js';
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -71,10 +71,11 @@ const filledUniswapPoolsData = Object.keys(missingUniswapDates).length > 0
   ? trimData(fillMissingDates(trimmedUniswapPoolsData, missingUniswapDates))
   : trimmedUniswapPoolsData;
 
+const liquidityPoolData = formatLiquidityPoolData(filledTvlData, filledUniswapPoolsData);
+
 console.log('APY data fetched and processed:', filledApyData);
-console.log('TVL data fetched and processed:', filledTvlData);
 console.log('Price data fetched and processed:', filledPriceData);
-console.log('Pool data fetched and processed:', filledUniswapPoolsData);
+console.log('Pool data fetched and processed:', liquidityPoolData);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
