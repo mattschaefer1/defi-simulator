@@ -429,3 +429,19 @@ export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
   }
   return liquidityPoolData;
 }
+
+/**
+ * Inserts the token symbol (e.g., 'USDC') into the price data for each day.
+ * @param {Object} priceData - Price data object ({ tokenName: [dailyPriceData] }).
+ * @returns {Object} Price data with token symbol (e.g., 'USDC') inserted.
+ */
+export function addSymbolToPriceData(priceData) {
+  const priceDataWithSymbol = {};
+  for (const [tokenName, dailyPriceData] of Object.entries(priceData)) {
+    const tokenSymbol = tokenName.toUpperCase();
+    priceDataWithSymbol[tokenName] = dailyPriceData.map((priceDataForDay) => {
+      return { ...priceDataForDay, tokenSymbol };
+    });
+  }
+  return priceDataWithSymbol;
+}
