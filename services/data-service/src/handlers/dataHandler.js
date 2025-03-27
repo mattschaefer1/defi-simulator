@@ -21,46 +21,53 @@ import {
 } from '../processors/dataProcessor.js';
 
 export default async function dataHandler(app) {
-  const apyTvlData = await fetchPoolData();
-  const priceData = await fetchPriceData(365);
-  const uniswapPoolsData = await fetchUniswapPoolData(365);
+  try {
+    const [apyTvlData, priceData, uniswapPoolsData] = await Promise.all([
+      fetchPoolData(),
+      fetchPriceData(365),
+      fetchUniswapPoolData(365)
+    ]);
+    
+    const [processedApyData, processedTvlData] = processPoolDataResponse(apyTvlData);
+    const processedPriceData = processPriceDataResponse(priceData);
+    const processedUniswapPoolsData = processUniswapPoolDataResponse(uniswapPoolsData);
 
-  const [processedApyData, processedTvlData] = processPoolDataResponse(apyTvlData);
-  const processedPriceData = processPriceDataResponse(priceData);
-  const processedUniswapPoolsData = processUniswapPoolDataResponse(uniswapPoolsData);
+    const cleanApyData = removeDuplicateTimestamps(processedApyData);
+    const cleanTvlData = removeDuplicateTimestamps(processedTvlData);
+    const cleanPriceData = removeDuplicateTimestamps(processedPriceData);
+    const cleanUniswapPoolsData = removeDuplicateTimestamps(processedUniswapPoolsData);
 
-  const cleanApyData = removeDuplicateTimestamps(processedApyData);
-  const cleanTvlData = removeDuplicateTimestamps(processedTvlData);
-  const cleanPriceData = removeDuplicateTimestamps(processedPriceData);
-  const cleanUniswapPoolsData = removeDuplicateTimestamps(processedUniswapPoolsData);
+    const trimmedApyData = trimData(cleanApyData);
+    const trimmedTvlData = trimData(cleanTvlData);
+    const trimmedPriceData = trimData(cleanPriceData);
+    const trimmedUniswapPoolsData = trimData(cleanUniswapPoolsData);
 
-  const trimmedApyData = trimData(cleanApyData);
-  const trimmedTvlData = trimData(cleanTvlData);
-  const trimmedPriceData = trimData(cleanPriceData);
-  const trimmedUniswapPoolsData = trimData(cleanUniswapPoolsData);
+    const missingApyDates = findMissingDates(trimmedApyData);
+    const missingTvlDates = findMissingDates(trimmedTvlData);
+    const missingPriceDates = findMissingDates(trimmedPriceData);
+    const missingUniswapDates = findMissingDates(trimmedUniswapPoolsData);
 
-  const missingApyDates = findMissingDates(trimmedApyData);
-  const missingTvlDates = findMissingDates(trimmedTvlData);
-  const missingPriceDates = findMissingDates(trimmedPriceData);
-  const missingUniswapDates = findMissingDates(trimmedUniswapPoolsData);
+    const filledApyData = Object.keys(missingApyDates).length > 0
+      ? trimData(fillMissingDates(trimmedApyData, missingApyDates))
+      : trimmedApyData;
+    const filledTvlData = Object.keys(missingTvlDates).length > 0
+      ? trimData(fillMissingDates(trimmedTvlData, missingTvlDates))
+      : trimmedTvlData;
+    const filledPriceData = Object.keys(missingPriceDates).length > 0
+      ? trimData(fillMissingDates(trimmedPriceData, missingPriceDates))
+      : trimmedPriceData;
+    const filledUniswapPoolsData = Object.keys(missingUniswapDates).length > 0
+      ? trimData(fillMissingDates(trimmedUniswapPoolsData, missingUniswapDates))
+      : trimmedUniswapPoolsData;
 
-  const filledApyData = Object.keys(missingApyDates).length > 0
-    ? trimData(fillMissingDates(trimmedApyData, missingApyDates))
-    : trimmedApyData;
-  const filledTvlData = Object.keys(missingTvlDates).length > 0
-    ? trimData(fillMissingDates(trimmedTvlData, missingTvlDates))
-    : trimmedTvlData;
-  const filledPriceData = Object.keys(missingPriceDates).length > 0
-    ? trimData(fillMissingDates(trimmedPriceData, missingPriceDates))
-    : trimmedPriceData;
-  const filledUniswapPoolsData = Object.keys(missingUniswapDates).length > 0
-    ? trimData(fillMissingDates(trimmedUniswapPoolsData, missingUniswapDates))
-    : trimmedUniswapPoolsData;
+    const liquidityPoolData = formatLiquidityPoolData(filledTvlData, filledUniswapPoolsData);
+    const tokenPriceData = addSymbolToPriceData(filledPriceData);
 
-  const liquidityPoolData = formatLiquidityPoolData(filledTvlData, filledUniswapPoolsData);
-  const tokenPriceData = addSymbolToPriceData(filledPriceData);
-
-  await saveStakingData(filledApyData, app);
-  await saveTokenPriceData(tokenPriceData, app);
-  await saveLiquidityPoolData(liquidityPoolData, app);  
+    await saveStakingData(filledApyData, app);
+    await saveTokenPriceData(tokenPriceData, app);
+    await saveLiquidityPoolData(liquidityPoolData, app);
+  } catch (error) {
+    console.error('Error in dataHandler:', error);
+    throw error;
+  }
 }

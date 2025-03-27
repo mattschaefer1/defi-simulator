@@ -42,11 +42,13 @@ cron.schedule('0 1 * * *', async () => {
   }
 
   isRunning = true;
-  console.log(`Running daily data fetch at ${new Date().toISOString()}...`);
+  const startTime = Date.now();
+  console.log(`Starting data fetch at ${new Date(startTime).toISOString()}...`);
 
   try {
     await dataHandler(app);
-    console.log('Data fetch completed successfully.');
+    const endTime = Date.now();
+    console.log(`Data fetch completed successfully in ${(endTime - startTime) / 1000} seconds.`);
   } catch (error) {
     console.error('Error fetching data:', error);
   } finally {
