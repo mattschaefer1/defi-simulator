@@ -1,24 +1,29 @@
 import { poolAddresses } from "../config/pools.js";
 
 /**
- * Converts date to ISO string.
- * @param {string|number} date - Date from API response.
- * @returns {string|null} ISO date string, or null if the input is invalid.
+ * Converts a date string or timestamp to an ISO string.
+ * @param {string|number} date - Date string (e.g., '2023-01-01') or Unix timestamp (in milliseconds).
+ * @returns {string|null} ISO date string (UTC), or null if the input is invalid.
  */
 function convertToISOString(date) {
+  if (typeof date !== 'string' && typeof date !== 'number') {
+    console.warn(`Invalid date input type: ${typeof date}, value: ${date}`);
+    return null;
+  }
   const parsedDate = new Date(date);
   return isNaN(parsedDate.getTime()) ? null : parsedDate.toISOString();
 }
 
 /**
- * Rounds a number to specified number of decimal places.
+ * Rounds a number to a specified number of decimal places.
  * @param {number} num - Number to round.
- * @param {number} numOfPlaces - Number of decimal places.
- * @returns {number} Rounded number, or NaN if inputs are invalid.
+ * @param {number} numOfPlaces - Number of decimal places (non-negative integer).
+ * @returns {number|null} Rounded number, or null if inputs are invalid.
  */
 function roundToDecimal(num, numOfPlaces) {
   if (typeof num !== 'number' || !Number.isInteger(numOfPlaces) || numOfPlaces < 0) {
-    return NaN;
+    console.warn(`Invalid inputs for rounding: num=${num}, numOfPlaces=${numOfPlaces}`);
+    return null;
   }
   const factor = Math.pow(10, numOfPlaces);
   return Math.round(num * factor) / factor;
@@ -26,93 +31,155 @@ function roundToDecimal(num, numOfPlaces) {
 
 /**
  * Formats raw daily pool data from DeFi Llama.
- * @param {Array} rawData - Raw data array from the API.
- * @returns {Array} Processed daily APY data.
+ * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string) and 'apy' (number).
+ * @returns {Array<Object>} Processed daily APY data with 'timestamp' (ISO string) and 'apyPercentage'.
  */
 function formatApyData(rawData) {
-  const dataToProcess = [...rawData];
-  return dataToProcess.map((day) => ({
-    timestamp: convertToISOString(day.timestamp.substring(0, 10)),
-    apyPercentage: roundToDecimal(day.apy, 2),
-  }));
+  if (!Array.isArray(rawData)) {
+    console.error('rawData is not an array');
+    return [];
+  }
+  return rawData
+    .filter(day => day && typeof day.timestamp === 'string' && typeof day.apy === 'number')
+    .map(day => {
+      const timestamp = convertToISOString(day.timestamp.substring(0, 10));
+      const apyPercentage = roundToDecimal(day.apy, 2);
+      if (timestamp === null || apyPercentage === null) {
+        console.warn(`Invalid APY data: ${JSON.stringify(day)}`);
+        return null;
+      }
+      return { timestamp, apyPercentage };
+    })
+    .filter(item => item !== null);
 }
 
 /**
  * Formats raw daily pool data from DeFi Llama.
- * @param {Array} rawData - Raw data array from the API.
- * @returns {Array} Processed daily TVL data.
+ * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string) and 'tvlUsd' (number).
+ * @returns {Array<Object>} Processed daily TVL data with 'timestamp' (ISO string) and 'tvlUsd'.
  */
 function formatTvlData(rawData) {
-  const dataToProcess = [...rawData];
-  return dataToProcess.map((day) => ({
-    timestamp: convertToISOString(day.timestamp.substring(0, 10)),
-    tvlUsd: roundToDecimal(day.tvlUsd, 6),
-  }));
+  if (!Array.isArray(rawData)) {
+    console.error('rawData is not an array');
+    return [];
+  }
+  return rawData
+    .filter(day => day && typeof day.timestamp === 'string' && typeof day.tvlUsd === 'number')
+    .map(day => {
+      const timestamp = convertToISOString(day.timestamp.substring(0, 10));
+      const tvlUsd = roundToDecimal(day.tvlUsd, 6);
+      if (timestamp === null || tvlUsd === null) {
+        console.warn(`Invalid TVL data: ${JSON.stringify(day)}`);
+        return null;
+      }
+      return { timestamp, tvlUsd };
+    })
+    .filter(item => item !== null);
 }
 
 /**
  * Formats raw daily token price data from CoinGecko.
- * @param {Array} rawData - Raw price data array (each item is [timestamp, price]).
- * @returns {Array} Processed token price data.
+ * @param {Array<Array<number>>} rawData - Raw price data array, each item is [timestamp (number), price (number)].
+ * @returns {Array<Object>} Processed token price data with 'timestamp' (ISO string) and 'priceUsd'.
  */
 function formatPriceData(rawData) {
-  const dataToProcess = [...rawData];
-  return dataToProcess.map((day) => ({
-    timestamp: convertToISOString(day[0]).slice(0, 10) + "T00:00:00.000Z",
-    priceUsd: roundToDecimal(day[1], 6),
-  }));
+  if (!Array.isArray(rawData)) {
+    console.error('rawData is not an array');
+    return [];
+  }
+  return rawData
+    .filter(day => Array.isArray(day) && day.length === 2 && typeof day[0] === 'number' && typeof day[1] === 'number')
+    .map(day => {
+      const timestamp = convertToISOString(day[0]);
+      const priceUsd = roundToDecimal(day[1], 6);
+      if (timestamp === null || priceUsd === null) {
+        console.warn(`Invalid price data: ${JSON.stringify(day)}`);
+        return null;
+      }
+      return { timestamp: timestamp.slice(0, 10) + "T00:00:00.000Z", priceUsd };
+    })
+    .filter(item => item !== null);
 }
 
 /**
  * Formats raw daily pool data from Uniswap Subgraph.
- * @param {Array} rawData - Raw data array from the GraphQL query.
- * @returns {Array} Processed daily pool data arranged from oldest to most recent.
+ * @param {Array<Object>} rawData - Raw data array with objects containing 'date' (number), 'feesUSD' (string), 'volumeUSD' (string).
+ * @returns {Array<Object>} Processed daily pool data arranged from oldest to most recent with 'timestamp', 'feesUSD', 'volumeUSD'.
  */
 function formatUniswapPoolData(rawData) {
+  if (!Array.isArray(rawData)) {
+    console.error('rawData is not an array');
+    return [];
+  }
   const reversedData = [...rawData].reverse();
-  return reversedData.map((day) => ({
-    timestamp: convertToISOString(day.date * 1000),
-    feesUSD: roundToDecimal(parseFloat(day.feesUSD), 6),
-    volumeUSD: roundToDecimal(parseFloat(day.volumeUSD), 6),
-  }));
+  return reversedData
+    .filter(day => day && typeof day.date === 'number' && typeof day.feesUSD === 'string' && typeof day.volumeUSD === 'string')
+    .map(day => {
+      const timestamp = convertToISOString(day.date * 1000);
+      const feesUSD = roundToDecimal(parseFloat(day.feesUSD), 6);
+      const volumeUSD = roundToDecimal(parseFloat(day.volumeUSD), 6);
+      if (timestamp === null || feesUSD === null || volumeUSD === null) {
+        console.warn(`Invalid Uniswap pool data: ${JSON.stringify(day)}`);
+        return null;
+      }
+      return { timestamp, feesUSD, volumeUSD };
+    })
+    .filter(item => item !== null);
 }
 
-/** Iterates through each pool's data and formats it.
- *  @param {Object} apyTvlData - Object containing data for each pool.
- *  @returns {Array} First element is array of APY data, second is object of TVL data for each pool.
+/**
+ * Processes APY and TVL data for each pool.
+ * @param {Object<string, Array<Object>>} apyTvlData - Pool data with keys as pool names and values as arrays of pool data objects.
+ * @returns {Array<Object<string, Array<Object>>>} [APY data object, TVL data object] with formatted pool data.
  */
 export function processPoolDataResponse(apyTvlData) {
-  let processedApyData = {};
+  const processedApyData = {};
   const processedTvlData = {};
-
   Object.entries(apyTvlData).forEach(([poolName, data]) => {
+    if (!Array.isArray(data)) {
+      console.error(`Data for pool ${poolName} is not an array`);
+      return;
+    }
     if (poolName === 'lidoEth') {
       processedApyData[poolName] = formatApyData(data);
     } else {
       processedTvlData[poolName] = formatTvlData(data);
     }
   });
-
   return [processedApyData, processedTvlData];
 }
 
-/** Iterates through each token's data and formats it.
- *  @param {Object} priceData - Object containing price data for each token.
- *  @returns {Object} Formatted token price data.
+/**
+ * Processes price data for each token.
+ * @param {Object<string, Array<Array<number>>>} priceData - Token data with keys as token names and values as arrays of [timestamp, price] pairs.
+ * @returns {Object<string, Array<Object>>} Token data with formatted price objects.
  */
 export function processPriceDataResponse(priceData) {
   return Object.fromEntries(
-    Object.entries(priceData).map(([tokenName, data]) => [tokenName, formatPriceData(data)])
+    Object.entries(priceData).map(([tokenName, data]) => {
+      if (!Array.isArray(data)) {
+        console.error(`Data for token ${tokenName} is not an array`);
+        return [tokenName, []];
+      }
+      return [tokenName, formatPriceData(data)];
+    })
   );
 }
 
-/** Iterates through each Uniswap pool's data and formats it.
- *  @param {Object} uniswapPoolsData - Object containing data for each pool.
- *  @returns {Object} Formatted Uniswap pool data.
+/**
+ * Processes Uniswap pool data for each pool.
+ * @param {Object<string, Array<Object>>} uniswapPoolsData - Pool data with keys as pool names and values as arrays of pool data objects.
+ * @returns {Object<string, Array<Object>>} Pool data with formatted objects.
  */
 export function processUniswapPoolDataResponse(uniswapPoolsData) {
   return Object.fromEntries(
-    Object.entries(uniswapPoolsData).map(([poolName, data]) => [poolName, formatUniswapPoolData(data)])
+    Object.entries(uniswapPoolsData).map(([poolName, data]) => {
+      if (!Array.isArray(data)) {
+        console.error(`Data for Uniswap pool ${poolName} is not an array`);
+        return [poolName, []];
+      }
+      return [poolName, formatUniswapPoolData(data)];
+    })
   );
 }
 
