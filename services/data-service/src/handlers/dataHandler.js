@@ -27,7 +27,7 @@ export default async function dataHandler(app) {
       fetchPriceData(365),
       fetchUniswapPoolData(365)
     ]);
-    
+
     const [processedApyData, processedTvlData] = processPoolDataResponse(apyTvlData);
     const processedPriceData = processPriceDataResponse(priceData);
     const processedUniswapPoolsData = processUniswapPoolDataResponse(uniswapPoolsData);
@@ -63,9 +63,19 @@ export default async function dataHandler(app) {
     const liquidityPoolData = formatLiquidityPoolData(filledTvlData, filledUniswapPoolsData);
     const tokenPriceData = addSymbolToPriceData(filledPriceData);
 
-    await saveStakingData(filledApyData, app);
-    await saveTokenPriceData(tokenPriceData, app);
-    await saveLiquidityPoolData(liquidityPoolData, app);
+    await saveStakingData(filledApyData, app).catch(err => {
+      console.error('Failed to save staking data:', err);
+      throw err;
+    });
+    await saveTokenPriceData(tokenPriceData, app).catch(err => {
+      console.error('Failed to save token price data:', err);
+      throw err;
+    });
+    await saveLiquidityPoolData(liquidityPoolData, app).catch(err => {
+      console.error('Failed to save liquidity pool data:', err);
+      throw err;
+    });
+    console.log('All data saved successfully');
   } catch (error) {
     console.error('Error in dataHandler:', error);
     throw error;
