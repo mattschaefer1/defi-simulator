@@ -184,92 +184,127 @@ export function processUniswapPoolDataResponse(uniswapPoolsData) {
 }
 
 /**
- * Removes duplicate timestamps from each array within the given data object.
- *
- * This function processes an object where each key maps to an array of objects. Each object is expected
- * to have a `timestamp` property (a value parseable by the Date constructor). For each array, the function:
- * - Iterates over the array and records the last occurrence of each unique timestamp.
- * - Filters the array to keep only the last occurrence of each duplicate timestamp.
- * - Sorts the filtered array in ascending order based on the timestamp.
- *
- * @param {Object<string, Array<Object>>} data - An object whose properties are arrays of objects with a 
- *                                               `timestamp` property.
- * @returns {Object<string, Array<Object>>} A new object with the same keys as the input. Each array contains 
- *                                          only the last occurrence of objects with duplicate timestamps, 
- *                                          sorted by timestamp in ascending order.
+ * Removes duplicate timestamps from each array within the given data object, keeping the last occurrence.
+ * @param {Object<string, Array<Object>>} data - Object with keys mapping to arrays of objects with a 'timestamp' string property.
+ * @returns {Object<string, Array<Object>>} New object with unique, sorted timestamps per key, or empty object if input is invalid.
  */
 export function removeDuplicateTimestamps(data) {
+  if (typeof data !== 'object' || data === null) {
+    console.error('Invalid data: must be a non-null object');
+    return {};
+  }
   const result = {};
   for (const key in data) {
     if (data.hasOwnProperty(key)) {
       const array = data[key];
+      if (!Array.isArray(array)) {
+        console.error(`Data for key '${key}' is not an array`);
+        result[key] = [];
+        continue;
+      }
       const lastOccurrences = new Map();
       for (const element of array) {
-        const timestamp = element.timestamp;
-        lastOccurrences.set(timestamp, element);
+        if (element && typeof element.timestamp === 'string' && !isNaN(new Date(element.timestamp))) {
+          lastOccurrences.set(element.timestamp, element);
+        } else {
+          console.warn(`Invalid or missing timestamp in element for key '${key}': ${JSON.stringify(element)}`);
+        }
       }
-      const filteredArray = array.filter(
-        element => element === lastOccurrences.get(element.timestamp)
+      result[key] = Array.from(lastOccurrences.values()).sort(
+        (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
       );
-      result[key] = filteredArray.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     }
   }
   return result;
 }
 
 /**
- * Trims data to specified maxLength.
- * @param {Object} data - Response data object.
- * @param {number} maxLength - Number of days worth of data (i.e., 365 days).
- * @returns {Object} Data trimmed to maxLength, or unchanged if all keys are within limit.
+ * Trims each array in the data object to the specified maxLength, keeping the most recent entries.
+ * @param {Object<string, Array<Object>>} data - Object with keys mapping to arrays of objects.
+ * @param {number} [maxLength=365] - Positive integer specifying maximum entries to keep.
+ * @returns {Object<string, Array<Object>>} Trimmed data object, or empty object if input is invalid.
  */
 export function trimData(data, maxLength = 365) {
+  if (typeof data !== 'object' || data === null) {
+    console.error('Invalid data: must be a non-null object');
+    return {};
+  }
+  if (!Number.isInteger(maxLength) || maxLength < 0) {
+    console.error(`Invalid maxLength: ${maxLength}, must be a non-negative integer`);
+    return data;
+  }
   const trimmedData = {};
   Object.entries(data).forEach(([key, value]) => {
-    trimmedData[key] = value.length > maxLength ? value.slice(-maxLength) : value;
+    if (!Array.isArray(value)) {
+      console.warn(`Value for key '${key}' is not an array; setting to empty array`);
+      trimmedData[key] = [];
+    } else {
+      trimmedData[key] = value.length > maxLength ? value.slice(-maxLength) : value;
+    }
   });
   return trimmedData;
 }
 
 /**
- * Identifies missing dates in response data.
- * @param {Object} data - Response data object.
- * @returns {Object} Missing dates for each key in response data.
+ * Identifies missing dates in each array of the data object based on timestamps.
+ * @param {Object<string, Array<{timestamp: string}>>} data - Object with arrays of objects containing 'timestamp' strings.
+ * @returns {Object<string, Array<string>>} Object mapping keys to arrays of missing date ISO strings.
  */
 export function findMissingDates(data) {
+  if (typeof data !== 'object' || data === null) {
+    console.error('Invalid data: must be a non-null object');
+    return {};
+  }
   const missingDatesByKey = {};
   for (const key in data) {
-    const records = data[key];
-    const dates = records
-      .map(r => {
-        const d = new Date(r.timestamp);
-        return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-      })
-      .sort((a, b) => a - b);
-
-    const missingDates = [];
-    for (let i = 0; i < dates.length - 1; i++) {
-      let expectedDate = new Date(dates[i].getTime());
-      expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
-      while (expectedDate < dates[i + 1]) {
-        missingDates.push(expectedDate.toISOString());
-        expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
+    if (data.hasOwnProperty(key)) {
+      const records = data[key];
+      if (!Array.isArray(records)) {
+        console.warn(`Data for key '${key}' is not an array`);
+        continue;
       }
-    }
-    if (missingDates.length > 0) {
-      missingDatesByKey[key] = missingDates;
+      const dates = records
+        .map(r => {
+          if (r && typeof r.timestamp === 'string' && !isNaN(new Date(r.timestamp))) {
+            const d = new Date(r.timestamp);
+            return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+          }
+          console.warn(`Invalid timestamp in record for key '${key}': ${JSON.stringify(r)}`);
+          return null;
+        })
+        .filter(d => d !== null)
+        .sort((a, b) => a - b);
+
+      if (dates.length < 2) continue;
+
+      const missingDates = [];
+      for (let i = 0; i < dates.length - 1; i++) {
+        let expectedDate = new Date(dates[i].getTime());
+        expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
+        while (expectedDate < dates[i + 1]) {
+          missingDates.push(expectedDate.toISOString());
+          expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
+        }
+      }
+      if (missingDates.length > 0) {
+        missingDatesByKey[key] = missingDates;
+      }
     }
   }
   return missingDatesByKey;
 }
 
 /**
- * Calculates a date that is a specified number of days before the given date.
- * @param {Date} date - The starting date from which to subtract days.
- * @param {number} numDays - The number of days to subtract from the starting date.
- * @returns {string} The ISO string representation of the resulting date (e.g., "2023-10-25T00:00:00.000Z").
+ * Calculates a date a specified number of days before the given date.
+ * @param {Date} date - Starting date.
+ * @param {number} numDays - Non-negative integer days to subtract.
+ * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
  */
 function findDateBefore(date, numDays) {
+  if (!(date instanceof Date) || isNaN(date.getTime()) || !Number.isInteger(numDays) || numDays < 0) {
+    console.warn(`Invalid inputs: date=${date}, numDays=${numDays}`);
+    return null;
+  }
   return new Date(
     Date.UTC(
       date.getUTCFullYear(),
@@ -280,12 +315,16 @@ function findDateBefore(date, numDays) {
 }
 
 /**
- * Calculates a date that is a specified number of days after the given date.
- * @param {Date} date - The starting date from which to add days.
- * @param {number} numDays - The number of days to add to the starting date.
- * @returns {string} The ISO string representation of the resulting date (e.g., "2023-10-25T00:00:00.000Z").
+ * Calculates a date a specified number of days after the given date.
+ * @param {Date} date - Starting date.
+ * @param {number} numDays - Non-negative integer days to add.
+ * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
  */
 function findDateAfter(date, numDays) {
+  if (!(date instanceof Date) || isNaN(date.getTime()) || !Number.isInteger(numDays) || numDays < 0) {
+    console.warn(`Invalid inputs: date=${date}, numDays=${numDays}`);
+    return null;
+  }
   return new Date(
     Date.UTC(
       date.getUTCFullYear(),
@@ -296,46 +335,45 @@ function findDateAfter(date, numDays) {
 }
 
 /**
- * Finds up to two valid dates before and after a missing date within a specified maximum number of days.
- *
- * This function searches for dates in the provided timestamps array that occur before and after
- * the missing date, stopping when it finds up to two of each or reaches the maxDays limit.
- *
- * @param {Date} missingDate - The date for which to find surrounding valid dates.
- * @param {string[]} timestamps - An array of existing timestamp strings in ISO format to search within.
- * @param {number} [maxDays=7] - The maximum number of days to look before and after the missing date (optional, defaults to 7).
- * @returns {[string[], string[]]} An array containing two arrays: the first with up to two ISO timestamp strings
- *                                 before the missing date, and the second with up to two after it.
+ * Finds up to two valid dates before and after a missing date within a maximum number of days.
+ * @param {Date} missingDate - The missing date.
+ * @param {string[]} timestamps - Array of existing ISO timestamp strings.
+ * @param {number} [maxDays=7] - Maximum days to search (positive integer).
+ * @returns {[string[], string[]]} Two arrays: dates before and after the missing date.
  */
 function findValidDates(missingDate, timestamps, maxDays = 7) {
+  if (!(missingDate instanceof Date) || isNaN(missingDate.getTime()) || 
+      !Array.isArray(timestamps) || !Number.isInteger(maxDays) || maxDays < 1) {
+    console.warn(`Invalid inputs: missingDate=${missingDate}, timestamps=${timestamps}, maxDays=${maxDays}`);
+    return [[], []];
+  }
+  const timestampSet = new Set(timestamps);
   const beforeDates = [];
   const afterDates = [];
   for (let i = 1; i <= maxDays && (beforeDates.length < 2 || afterDates.length < 2); i++) {
     if (beforeDates.length < 2) {
       const beforeDay = findDateBefore(missingDate, i);
-      if (timestamps.includes(beforeDay)) beforeDates.push(beforeDay);
+      if (beforeDay && timestampSet.has(beforeDay)) beforeDates.push(beforeDay);
     }
     if (afterDates.length < 2) {
       const afterDay = findDateAfter(missingDate, i);
-      if (timestamps.includes(afterDay)) afterDates.push(afterDay);
+      if (afterDay && timestampSet.has(afterDay)) afterDates.push(afterDay);
     }
   }
   return [beforeDates.slice(0, 2), afterDates.slice(0, 2)];
 }
 
 /**
- * Retrieves metrics from records corresponding to the provided valid dates.
- *
- * This function aggregates metric values (excluding the 'timestamp' key) from records
- * mapped to the given timestamps, organizing them by metric name.
- *
- * @param {string[]} validDates - An array of timestamp strings in ISO format to look up in the recordMap.
- * @param {Map<string, Object>} recordMap - A Map where keys are ISO timestamp strings and values are
- *                                          record objects containing metric key-value pairs.
- * @returns {Object} An object where each key is a metric name and each value is an array of
- *                   corresponding metric values from the records.
+ * Retrieves metrics from records for the given valid dates.
+ * @param {string[]} validDates - Array of ISO timestamp strings.
+ * @param {Map<string, Object>} recordMap - Map of timestamps to records with metric key-value pairs.
+ * @returns {Object<string, Array<number>>} Metrics object with arrays of values per metric.
  */
 function getMetrics(validDates, recordMap) {
+  if (!Array.isArray(validDates) || !(recordMap instanceof Map)) {
+    console.warn(`Invalid inputs: validDates=${validDates}, recordMap=${recordMap}`);
+    return {};
+  }
   const metrics = {};
   validDates.forEach((timestamp) => {
     const record = recordMap.get(timestamp);
@@ -352,27 +390,22 @@ function getMetrics(validDates, recordMap) {
 }
 
 /**
- * Simulates metrics for a missing date based on metrics from before and after dates.
- *
- * For each metric present in either metricsBefore or metricsAfter:
- * - If both have values, it calculates a random value between their averages.
- * - If only one has values, it uses that average.
- * - If neither has values, it defaults to 0.
- *
- * @param {Object} metricsBefore - An object where keys are metric names and values are arrays of
- *                                 metric values from dates before the missing date.
- * @param {Object} metricsAfter - An object where keys are metric names and values are arrays of
- *                                metric values from dates after the missing date.
- * @returns {Object} An object where each key is a metric name and each value is a simulated
- *                   integer metric value.
+ * Simulates metrics for a missing date based on before and after metrics.
+ * @param {Object<string, number[]>} metricsBefore - Metrics before the missing date.
+ * @param {Object<string, number[]>} metricsAfter - Metrics after the missing date.
+ * @returns {Object<string, number>} Simulated metrics as integers.
  */
 function simulateMetrics(metricsBefore, metricsAfter) {
+  if (typeof metricsBefore !== 'object' || typeof metricsAfter !== 'object') {
+    console.warn(`Invalid inputs: metricsBefore=${metricsBefore}, metricsAfter=${metricsAfter}`);
+    return {};
+  }
   const simulatedMetrics = {};
-  const allMetrics = new Set([...Object.keys(metricsBefore), ...Object.keys(metricsAfter)]);
+  const allMetrics = new Set([...Object.keys(metricsBefore || {}), ...Object.keys(metricsAfter || {})]);
   
   for (const metric of allMetrics) {
-    const beforeValues = metricsBefore[metric] || [];
-    const afterValues = metricsAfter[metric] || [];
+    const beforeValues = Array.isArray(metricsBefore[metric]) ? metricsBefore[metric].filter(v => typeof v === 'number') : [];
+    const afterValues = Array.isArray(metricsAfter[metric]) ? metricsAfter[metric].filter(v => typeof v === 'number') : [];
     let simulatedValue;
 
     if (beforeValues.length > 0 && afterValues.length > 0) {
@@ -387,6 +420,7 @@ function simulateMetrics(metricsBefore, metricsAfter) {
       simulatedValue = Math.floor(afterValues.reduce((a, b) => a + b, 0) / afterValues.length);
     } else {
       simulatedValue = 0;
+      console.warn(`No numeric data for metric '${metric}', defaulting to 0`);
     }
     simulatedMetrics[metric] = simulatedValue;
   }
@@ -394,30 +428,37 @@ function simulateMetrics(metricsBefore, metricsAfter) {
 }
 
 /**
- * Returns a new object based on the provided data, with additional records for the specified missing dates.
- *
- * This function processes each key in missingDates, adding new records with simulated metrics for each
- * missing date. Metrics are simulated using nearby dates' data if available; otherwise, they default to 0.
- * The resulting records are sorted by timestamp.
- *
- * @param {Object} data - The original data, structured as { key: [{ timestamp, ...metrics }, ...] },
- *                        where each record has a 'timestamp' string and metric properties.
- * @param {Object} missingDates - An object structured as { key: [dateString, ...] }, where each key
- *                                corresponds to a key in data, and dateString values are ISO date strings.
- * @returns {Object} A new object with the same keys as those processed from missingDates, containing
- *                   the original records plus new records for the missing dates with simulated metrics.
- *                   If no missing dates are processed, returns the original data.
+ * Fills missing dates in the data object with simulated metrics.
+ * @param {Object<string, Array<{timestamp: string, [key: string]: number}>>} data - Object with arrays of objects containing 'timestamp' (string) and metric key-value pairs.
+ * @param {Object<string, Array<string>>} missingDates - Missing dates as ISO strings per key.
+ * @returns {Object<string, Array<{timestamp: string, [key: string]: number}>>} Data with filled missing dates.
  */
 export function fillMissingDates(data, missingDates) {
+  if (typeof data !== 'object' || typeof missingDates !== 'object' || data === null || missingDates === null) {
+    console.error('Invalid inputs: data or missingDates must be non-null objects');
+    return data || {};
+  }
   const filledData = {};
   Object.entries(missingDates).forEach(([key, dates]) => {
-    const records = [...data[key]];
+    if (!Array.isArray(dates)) {
+      console.warn(`Missing dates for key '${key}' is not an array`);
+      return;
+    }
+    const records = data[key];
+    if (!Array.isArray(records)) {
+      console.warn(`Data for key '${key}' is not an array`);
+      return;
+    }
     const newRecords = [];
     const recordMap = new Map(records.map(r => [r.timestamp, r]));
     const timestamps = records.map(r => r.timestamp);
 
     for (const date of dates) {
       const missingDate = new Date(date);
+      if (isNaN(missingDate.getTime())) {
+        console.warn(`Invalid date '${date}' for key '${key}'`);
+        continue;
+      }
       const [validDatesBefore, validDatesAfter] = findValidDates(missingDate, timestamps);
       if (validDatesBefore.length > 0 || validDatesAfter.length > 0) {
         const metricsBefore = getMetrics(validDatesBefore, recordMap);
@@ -425,9 +466,9 @@ export function fillMissingDates(data, missingDates) {
         const simulatedMetrics = simulateMetrics(metricsBefore, metricsAfter);
         newRecords.push({ timestamp: missingDate.toISOString(), ...simulatedMetrics });
       } else {
-        console.warn(`No valid dates found for ${date} in ${key}`);
+        console.warn(`No valid dates found for ${date} in '${key}'`);
         if (records.length === 0) {
-          console.error(`No data available for ${key}. Skipping.`);
+          console.error(`No data available for '${key}'. Skipping.`);
           continue;
         }
         const sampleRecord = records[0];
@@ -438,32 +479,39 @@ export function fillMissingDates(data, missingDates) {
         newRecords.push({ timestamp: missingDate.toISOString(), ...simulatedMetrics });
       }
     }
-
     filledData[key] = [...records, ...newRecords].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   });
   return Object.keys(filledData).length > 0 ? filledData : data;
 }
 
 /**
- * Checks index alignment of TVL and Uniswap pool data (i.e., both objects contain the same dates).
- * @param {Object} tvlData - TVL data for each pool.
- * @param {Object} uniswapPoolsData - Uniswap data for each pool.
- * @returns {boolean} True if the indexes of each object align, false otherwise.
+ * Checks if TVL and Uniswap pool data timestamps align for each pool.
+ * @param {Object<string, Array<{timestamp: string}>>} tvlData - TVL data per pool.
+ * @param {Object<string, Array<{timestamp: string}>>} uniswapPoolsData - Uniswap data per pool.
+ * @returns {boolean} True if timestamps align, false otherwise.
  */
 function checkTimestampAlignment(tvlData, uniswapPoolsData) {
+  if (typeof tvlData !== 'object' || typeof uniswapPoolsData !== 'object' || tvlData === null || uniswapPoolsData === null) {
+    console.error('Invalid inputs: tvlData or uniswapPoolsData must be non-null objects');
+    return false;
+  }
   for (const [poolName, data] of Object.entries(uniswapPoolsData)) {
     if (!tvlData.hasOwnProperty(poolName)) {
-      console.error(`Pool ${poolName} not found in tvlData.`);
+      console.error(`Pool '${poolName}' not found in tvlData`);
       return false;
     }
     const tvlDataOfPool = tvlData[poolName];
+    if (!Array.isArray(data) || !Array.isArray(tvlDataOfPool)) {
+      console.error(`Data for pool '${poolName}' is not an array in one of the datasets`);
+      return false;
+    }
     if (data.length !== tvlDataOfPool.length) {
-      console.error(`Data length mismatch for pool ${poolName}: uniswapPoolsData has ${data.length}, tvlData has ${tvlDataOfPool.length}`);
+      console.error(`Data length mismatch for pool '${poolName}': uniswapPoolsData has ${data.length}, tvlData has ${tvlDataOfPool.length}`);
       return false;
     }
     for (let i = 0; i < data.length; i++) {
-      if (data[i].timestamp !== tvlDataOfPool[i].timestamp) {
-        console.error(`Timestamp mismatch at index ${i} of pool ${poolName}: ${data[i].timestamp} !== ${tvlDataOfPool[i].timestamp}`);
+      if (!data[i] || !tvlDataOfPool[i] || data[i].timestamp !== tvlDataOfPool[i].timestamp) {
+        console.error(`Timestamp mismatch at index ${i} of pool '${poolName}': ${data[i]?.timestamp} !== ${tvlDataOfPool[i]?.timestamp}`);
         return false;
       }
     }
@@ -472,10 +520,10 @@ function checkTimestampAlignment(tvlData, uniswapPoolsData) {
 }
 
 /**
- * Adds daily TVL and pool addresses to each Uniswap pool's data.
- * @param {Object} tvlData - TVL data for each pool.
- * @param {Object} uniswapPoolsData - Uniswap data for each pool.
- * @returns {Object} Uniswap pool data aligning with database schema.
+ * Formats Uniswap pool data with TVL and pool addresses if timestamps align.
+ * @param {Object<string, Array<{timestamp: string, tvlUsd: number}>>} tvlData - TVL data per pool.
+ * @param {Object<string, Array<{timestamp: string, [key: string]: number}>>} uniswapPoolsData - Uniswap data per pool.
+ * @returns {Object<string, Array<{timestamp: string, poolAddress: string, tvlUsd: number, [key: string]: any}>>} Formatted data or empty object if not aligned.
  */
 export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
   const liquidityPoolData = {};
@@ -484,6 +532,10 @@ export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
     Object.entries(uniswapPoolsData).forEach(([poolName, data]) => {
       const tvlDataOfPool = tvlData[poolName];
       const poolAddress = poolAddresses[poolName];
+      if (!poolAddress) {
+        console.warn(`No pool address for '${poolName}'`);
+        return;
+      }
       liquidityPoolData[poolName] = data.map((poolDataForDay, i) => {
         const tvlForDay = tvlDataOfPool[i];
         return {
@@ -493,18 +545,28 @@ export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
         };
       });
     });
+  } else {
+    console.warn('Timestamp alignment failed; returning empty object');
   }
   return liquidityPoolData;
 }
 
 /**
- * Inserts the token symbol (e.g., 'USDC') into the price data for each day.
- * @param {Object} priceData - Price data object ({ tokenName: [dailyPriceData] }).
- * @returns {Object} Price data with token symbol (e.g., 'USDC') inserted.
+ * Adds token symbol to each day's price data.
+ * @param {Object<string, Array<{timestamp: string, priceUsd: number}>>} priceData - Price data per token.
+ * @returns {Object<string, Array<{timestamp: string, priceUsd: number, tokenSymbol: string}>>} Price data with symbols.
  */
 export function addSymbolToPriceData(priceData) {
+  if (typeof priceData !== 'object' || priceData === null) {
+    console.error('Invalid priceData: must be a non-null object');
+    return {};
+  }
   const priceDataWithSymbol = {};
   for (const [tokenName, dailyPriceData] of Object.entries(priceData)) {
+    if (!Array.isArray(dailyPriceData)) {
+      console.warn(`Price data for '${tokenName}' is not an array`);
+      continue;
+    }
     const tokenSymbol = tokenName.toUpperCase();
     priceDataWithSymbol[tokenName] = dailyPriceData.map((priceDataForDay) => {
       return { ...priceDataForDay, tokenSymbol };
