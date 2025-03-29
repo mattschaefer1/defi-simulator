@@ -65,7 +65,44 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error' });
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Data Service running on port ${PORT}`);
-});
+// Start the server with seeding
+async function startServer() {
+  try {
+    // Ensure database schema is synced
+    await sequelize.sync();
+    console.log('Database schema synced');
+
+    // Check if the database is empty
+    if (
+      !app.locals.models?.ETHStakingHistorical ||
+      !app.locals.models?.TokenPrice ||
+      !app.locals.models?.LPHistorical
+    ) {
+      throw new Error('Database models are not available');
+    }
+    const ethCount = await app.locals.models.ETHStakingHistorical.count();
+    const priceCount = await app.locals.models.TokenPrice.count();
+    const lpCount = await app.locals.models.LPHistorical.count();
+
+    if (ethCount === 0 || priceCount === 0 || lpCount === 0) {
+      console.log('Database is empty or partially seeded, seeding historical data...');
+      const startTime = Date.now();
+      await dataHandler(app);
+      const endTime = Date.now();
+      console.log(`Database seeded successfully in ${(endTime - startTime) / 1000} seconds`);
+    } else {
+      console.log('Database already contains data, skipping seeding');
+    }
+
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(`Data Service running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Error during startup:', error);
+    process.exit(1);
+  }
+}
+
+// Initiate server startup
+startServer();
