@@ -20,12 +20,17 @@ import {
   processUniswapPoolDataResponse
 } from '../processors/dataProcessor.js';
 
+/**
+ * Fetches, processes, and saves data to the database for use in running simulations.
+ * @param {Object} app - Application object containing database models under `app.locals.models`.
+ * @throws {Error} If an error occurs during fetching, processing, or saving data to the database.
+ */
 export default async function dataHandler(app) {
   try {
     const [apyTvlData, priceData, uniswapPoolsData] = await Promise.all([
       fetchPoolData(),
-      fetchPriceData(365),
-      fetchUniswapPoolData(365)
+      fetchPriceData(),
+      fetchUniswapPoolData()
     ]);
 
     const [processedApyData, processedTvlData] = processPoolDataResponse(apyTvlData);

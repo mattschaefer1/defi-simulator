@@ -59,13 +59,13 @@ async function fetchPoolData() {
 /**
  * Fetches historical price data from CoinGecko for each token in tokenAddresses.
  *
- * @param {number} [numDaysAgo=3] - Number of days of historical data to fetch (default: 3).
+ * @param {number} [numDaysAgo=365] - Number of days of historical data to fetch (default: 365).
  * @returns {Promise<Object>} A promise that resolves to an object where keys are token names
  *                            and values are arrays of arrays containing timestamp and price data.
  *                            If a request fails, the corresponding token's value is set to null.
  * @throws {Error} If COINGECKO_API_URL or COINGECKO_API_KEY is not set in the environment variables.
  */
-async function fetchPriceData(numDaysAgo = 3) {
+async function fetchPriceData(numDaysAgo = 365) {
   if (!process.env.COINGECKO_API_URL || !process.env.COINGECKO_API_KEY) {
     throw new Error('COINGECKO_API_URL or COINGECKO_API_KEY is not set in the environment variables.');
   }
@@ -102,14 +102,14 @@ async function fetchPriceData(numDaysAgo = 3) {
 /**
  * Fetches historical data from Uniswap Subgraph for each pool in poolAddresses.
  *
- * @param {number} [numDaysAgo=3] - Number of days of historical data to fetch (default: 3).
+ * @param {number} [numDaysAgo=365] - Number of days of historical data to fetch (default: 365).
  * @param {number} [startTimestamp=1620086400] - Unix timestamp to filter data after this date (default: May 4, 2021).
  * @returns {Promise<Object>} A promise that resolves to an object where keys are pool names
  *                            and values are arrays of objects containing pool data (date, feesUSD, volumeUSD).
  *                            If a request fails, the corresponding pool's value is set to null.
  * @throws {Error} If GRAPH_API_URL is not set in the environment variables.
  */
-async function fetchUniswapPoolData(numDaysAgo = 3, startTimestamp = 1620086400) {
+async function fetchUniswapPoolData(numDaysAgo = 365, startTimestamp = 1620086400) {
   if (!process.env.GRAPH_API_URL) {
     throw new Error('GRAPH_API_URL is not set in the environment variables.');
   }
