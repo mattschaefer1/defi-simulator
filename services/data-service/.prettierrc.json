@@ -1,0 +1,19 @@
+{
+  "semi": true,
+  "experimentalOperatorPosition": "end",
+  "experimentalTernaries": false,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "useTabs": false,
+  "endOfLine": "lf",
+  "printWidth": 80,
+  "arrowParens": "always",
+  "proseWrap": "preserve",
+  "htmlWhitespaceSensitivity": "css",
+  "bracketSpacing": true,
+  "insertPragma": false,
+  "requirePragma": false,
+  "quoteProps": "as-needed",
+  "trailingComma": "all",
+  "vueIndentScriptAndStyle": false
+}
