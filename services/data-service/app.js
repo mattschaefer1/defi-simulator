@@ -12,10 +12,37 @@ const PORT = process.env.DATA_SERVICE_PORT || 3001;
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Database connection test
-sequelize.authenticate()
-  .then(() => console.log('Connected to TimescaleDB'))
-  .catch(err => console.error('TimescaleDB connection error:', err));
+// Retry configuration
+const MAX_RETRIES = 5;
+const INITIAL_RETRY_DELAY = 5000;
+
+// Retry function with exponential backoff
+const retryWithBackoff = async (
+  fn,
+  retries = MAX_RETRIES,
+  delay = INITIAL_RETRY_DELAY,
+) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) throw error;
+    console.log(
+      `Connection attempt failed. Retrying in ${delay / 1000} seconds... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`,
+    );
+    await new Promise((resolve) => {
+      setTimeout(resolve, delay);
+    });
+    return retryWithBackoff(fn, retries - 1, delay * 2);
+  }
+};
+
+// Database connection with retry logic
+const connectToDatabase = async () => {
+  await retryWithBackoff(async () => {
+    await sequelize.authenticate();
+    console.log('Connected to TimescaleDB');
+  });
+};
 
 // Make models available to routes
 app.locals.models = models;
@@ -25,32 +52,40 @@ app.use('/api/data', dataRoutes);
 
 // Fetch and save data to database (Daily at 1:00 AM UTC)
 let isRunning = false;
-cron.schedule('0 1 * * *', async () => {
-  if (isRunning) {
-    console.log('Previous run still in progress, skipping...');
-    return;
-  }
+cron.schedule(
+  '0 1 * * *',
+  async () => {
+    if (isRunning) {
+      console.log('Previous run still in progress, skipping...');
+      return;
+    }
 
-  isRunning = true;
-  const startTime = Date.now();
-  console.log(`Starting data fetch at ${new Date(startTime).toISOString()}...`);
+    isRunning = true;
+    const startTime = Date.now();
+    console.log(
+      `Starting data fetch at ${new Date(startTime).toISOString()}...`,
+    );
 
-  try {
-    await dataHandler(app);
-    const endTime = Date.now();
-    console.log(`Data fetch completed successfully in ${(endTime - startTime) / 1000} seconds.`);
-  } catch (error) {
-    console.error('Error fetching data:', error);
-  } finally {
-    isRunning = false;
-  }
-}, {
-  scheduled: true,
-  timezone: 'Etc/UTC',
-});
+    try {
+      await dataHandler(app);
+      const endTime = Date.now();
+      console.log(
+        `Data fetch completed successfully in ${(endTime - startTime) / 1000} seconds.`,
+      );
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      isRunning = false;
+    }
+  },
+  {
+    scheduled: true,
+    timezone: 'Etc/UTC',
+  },
+);
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal server error' });
 });
@@ -58,6 +93,9 @@ app.use((err, req, res, next) => {
 // Start the server with seeding
 async function startServer() {
   try {
+    // Connect to database with retry logic
+    await connectToDatabase();
+
     // Ensure database schema is synced
     await sequelize.sync();
     console.log('Database schema synced');
@@ -75,11 +113,15 @@ async function startServer() {
     const lpCount = await app.locals.models.LPHistorical.count();
 
     if (ethCount === 0 || priceCount === 0 || lpCount === 0) {
-      console.log('Database is empty or partially seeded, seeding historical data...');
+      console.log(
+        'Database is empty or partially seeded, seeding historical data...',
+      );
       const startTime = Date.now();
       await dataHandler(app);
       const endTime = Date.now();
-      console.log(`Database seeded successfully in ${(endTime - startTime) / 1000} seconds`);
+      console.log(
+        `Database seeded successfully in ${(endTime - startTime) / 1000} seconds`,
+      );
     } else {
       console.log('Database already contains data, skipping seeding');
     }
