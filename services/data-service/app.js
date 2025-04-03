@@ -1,17 +1,9 @@
 import express from 'express';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import cron from 'node-cron';
 import morgan from 'morgan';
 import dataRoutes from './src/routes/dataRoutes.js';
 import { sequelize, models } from './src/models/index.js';
-
-// Get the directory name of the current module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Load .env from the defi-simulator root directory
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+import dataHandler from './src/handlers/dataHandler.js';
 
 const app = express();
 const PORT = process.env.DATA_SERVICE_PORT || 3001;
@@ -31,13 +23,76 @@ app.locals.models = models;
 // Routes
 app.use('/api/data', dataRoutes);
 
+// Fetch and save data to database (Daily at 1:00 AM UTC)
+let isRunning = false;
+cron.schedule('0 1 * * *', async () => {
+  if (isRunning) {
+    console.log('Previous run still in progress, skipping...');
+    return;
+  }
+
+  isRunning = true;
+  const startTime = Date.now();
+  console.log(`Starting data fetch at ${new Date(startTime).toISOString()}...`);
+
+  try {
+    await dataHandler(app);
+    const endTime = Date.now();
+    console.log(`Data fetch completed successfully in ${(endTime - startTime) / 1000} seconds.`);
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  } finally {
+    isRunning = false;
+  }
+}, {
+  scheduled: true,
+  timezone: 'Etc/UTC',
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal server error' });
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Data Service running on port ${PORT}`);
-});
+// Start the server with seeding
+async function startServer() {
+  try {
+    // Ensure database schema is synced
+    await sequelize.sync();
+    console.log('Database schema synced');
+
+    // Check if the database is empty
+    if (
+      !app.locals.models?.ETHStakingHistorical ||
+      !app.locals.models?.TokenPrice ||
+      !app.locals.models?.LPHistorical
+    ) {
+      throw new Error('Database models are not available');
+    }
+    const ethCount = await app.locals.models.ETHStakingHistorical.count();
+    const priceCount = await app.locals.models.TokenPrice.count();
+    const lpCount = await app.locals.models.LPHistorical.count();
+
+    if (ethCount === 0 || priceCount === 0 || lpCount === 0) {
+      console.log('Database is empty or partially seeded, seeding historical data...');
+      const startTime = Date.now();
+      await dataHandler(app);
+      const endTime = Date.now();
+      console.log(`Database seeded successfully in ${(endTime - startTime) / 1000} seconds`);
+    } else {
+      console.log('Database already contains data, skipping seeding');
+    }
+
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(`Data Service running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Error during startup:', error);
+    process.exit(1);
+  }
+}
+
+// Initiate server startup
+startServer();
