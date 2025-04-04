@@ -8,7 +8,6 @@
     "import/extensions": ["error", "ignorePackages", {
       "js": "always"
     }],
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "no-console": "off",
     "operator-linebreak": ["error", "after", { "overrides": { "?": "before", ":": "before" } }],
     "multiline-ternary": ["error", "always-multiline"],

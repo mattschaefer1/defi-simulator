@@ -19,16 +19,16 @@ export function saveStakingData(apyData, app) {
 
   return Promise.all(
     Object.entries(apyData || {})
-      .filter(([_poolName, dailyApyData]) => {
+      .filter(([poolName, dailyApyData]) => {
         if (!Array.isArray(dailyApyData)) {
           console.warn(
-            `Skipping invalid data for pool '${_poolName}': not an array`,
+            `Skipping invalid data for pool '${poolName}': not an array`,
           );
           return false;
         }
         return true;
       })
-      .flatMap(([_poolName, dailyApyData]) =>
+      .flatMap(([, dailyApyData]) =>
         dailyApyData
           .filter(
             (apyDataForDay) =>
@@ -81,16 +81,16 @@ export function saveTokenPriceData(priceData, app) {
 
   return Promise.all(
     Object.entries(priceData || {})
-      .filter(([_tokenName, dailyPriceData]) => {
+      .filter(([tokenName, dailyPriceData]) => {
         if (!Array.isArray(dailyPriceData)) {
           console.warn(
-            `Skipping invalid data for token '${_tokenName}': not an array`,
+            `Skipping invalid data for token '${tokenName}': not an array`,
           );
           return false;
         }
         return true;
       })
-      .flatMap(([_tokenName, dailyPriceData]) =>
+      .flatMap(([, dailyPriceData]) =>
         dailyPriceData
           .filter(
             (priceDataForDay) =>
@@ -147,16 +147,16 @@ export function saveLiquidityPoolData(liquidityPoolData, app) {
 
   return Promise.all(
     Object.entries(liquidityPoolData || {})
-      .filter(([_poolName, dailyLpData]) => {
+      .filter(([poolName, dailyLpData]) => {
         if (!Array.isArray(dailyLpData)) {
           console.warn(
-            `Skipping invalid data for pool '${_poolName}': not an array`,
+            `Skipping invalid data for pool '${poolName}': not an array`,
           );
           return false;
         }
         return true;
       })
-      .flatMap(([_poolName, dailyLpData]) =>
+      .flatMap(([, dailyLpData]) =>
         dailyLpData
           .filter(
             (lpDataForDay) =>
