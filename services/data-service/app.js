@@ -3,7 +3,7 @@ import cron from 'node-cron';
 import morgan from 'morgan';
 import dataRoutes from './src/routes/dataRoutes.js';
 import { sequelize, models } from './src/models/index.js';
-import dataHandler from './src/handlers/dataHandler.js';
+import dataHandler from './src/data/handler.js';
 import retry from './src/utils/retry.js';
 
 const app = express();

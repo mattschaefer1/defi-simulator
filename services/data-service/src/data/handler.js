@@ -2,12 +2,12 @@ import {
   fetchPoolData,
   fetchPriceData,
   fetchUniswapPoolData,
-} from '../services/dataFetcher.js';
+} from './fetcher.js';
 import {
   saveStakingData,
   saveTokenPriceData,
   saveLiquidityPoolData,
-} from '../savers/dataSaver.js';
+} from './saver.js';
 import {
   trimData,
   removeDuplicateTimestamps,
@@ -18,7 +18,7 @@ import {
   processPoolDataResponse,
   processPriceDataResponse,
   processUniswapPoolDataResponse,
-} from '../processors/dataProcessor.js';
+} from './processor.js';
 
 /**
  * Fetches, processes, and saves data to the database for use in running simulations.
