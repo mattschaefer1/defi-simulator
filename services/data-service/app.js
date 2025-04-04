@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import dataRoutes from './src/routes/dataRoutes.js';
 import { sequelize, models } from './src/models/index.js';
 import dataHandler from './src/handlers/dataHandler.js';
+import retry from './src/utils/retry.js';
 
 const app = express();
 const PORT = process.env.DATA_SERVICE_PORT || 3001;
@@ -12,40 +13,19 @@ const PORT = process.env.DATA_SERVICE_PORT || 3001;
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Retry configuration
-const MAX_RETRIES = 5;
-const INITIAL_RETRY_DELAY = 5000;
-
-// Retry function with exponential backoff
-const retryWithBackoff = async (
-  fn,
-  retries = MAX_RETRIES,
-  delay = INITIAL_RETRY_DELAY,
-) => {
-  try {
-    return await fn();
-  } catch (error) {
-    if (retries === 0) throw error;
-    console.log(
-      `Connection attempt failed. Retrying in ${delay / 1000} seconds... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`,
-    );
-    await new Promise((resolve) => {
-      setTimeout(resolve, delay);
-    });
-    return retryWithBackoff(fn, retries - 1, delay * 2);
-  }
-};
+// Make models available to routes
+app.locals.models = models;
 
 // Database connection with retry logic
 const connectToDatabase = async () => {
-  await retryWithBackoff(async () => {
-    await sequelize.authenticate();
-    console.log('Connected to TimescaleDB');
-  });
+  await retry(
+    async () => {
+      await sequelize.authenticate();
+      console.log('Connected to TimescaleDB');
+    },
+    { verbose: true, retries: 5, initialDelay: 5000 },
+  );
 };
-
-// Make models available to routes
-app.locals.models = models;
 
 // Routes
 app.use('/api/data', dataRoutes);

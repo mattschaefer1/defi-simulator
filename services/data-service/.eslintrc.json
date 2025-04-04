@@ -19,6 +19,8 @@
       "ArrayExpression": "first",
       "ObjectExpression": "first",
       "offsetTernaryExpressions": true
-    }]
+    }],
+    "implicit-arrow-linebreak": "off",
+    "function-paren-newline": "off"
   }
 }
