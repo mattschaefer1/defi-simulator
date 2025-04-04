@@ -65,7 +65,7 @@ cron.schedule(
 );
 
 // Error handling middleware
-app.use((err, req, res, _next) => {
+app.use((err, req, res) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal server error' });
 });
