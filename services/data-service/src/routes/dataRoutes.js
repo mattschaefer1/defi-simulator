@@ -11,20 +11,23 @@ const router = express.Router();
  * @returns {Object} An object containing:
  *   - {Date} [startDate] - The start date if provided and valid, otherwise undefined
  *   - {Date} [endDate] - The end date if provided and valid, otherwise undefined
- *   - {string} [errorMsg] - An error message if dates are invalid or start is after end, otherwise undefined
+ *   - {string} [errorMsg] - An error message if dates are invalid or start is after end,
+ *                           otherwise undefined
  */
 function validateRequestDates(start, end) {
-  let startDate, endDate, errorMsg;
+  let startDate;
+  let endDate;
+  let errorMsg;
   if (start) {
     startDate = new Date(start);
-    if (isNaN(startDate.getTime())) {
+    if (Number.isNaN(startDate.getTime())) {
       errorMsg = 'Invalid start date';
       return { startDate, endDate, errorMsg };
     }
   }
   if (end) {
     endDate = new Date(end);
-    if (isNaN(endDate.getTime())) {
+    if (Number.isNaN(endDate.getTime())) {
       errorMsg = 'Invalid end date';
       return { startDate, endDate, errorMsg };
     }
@@ -44,29 +47,32 @@ function validateRequestDates(start, end) {
  * @returns {Object} Updated where clause with start and/or end dates
  */
 function addDatesToWhereClause(whereClause, startDate, endDate) {
+  const result = { ...whereClause };
   if (startDate) {
-    whereClause.timestamp = { [Op.gte]: startDate };
+    result.timestamp = { [Op.gte]: startDate };
   }
   if (endDate) {
-    whereClause.timestamp = whereClause.timestamp
-      ? { ...whereClause.timestamp, [Op.lte]: endDate }
+    result.timestamp = result.timestamp
+      ? { ...result.timestamp, [Op.lte]: endDate }
       : { [Op.lte]: endDate };
   }
-  return whereClause;
+  return result;
 }
 
 /**
- * Retrieves the APY history from the ETHStakingHistorical table, optionally filtered by a date range.
- * 
+ * Retrieves the APY history from the ETHStakingHistorical table,
+ * optionally filtered by a date range.
+ *
  * Frontend Uses:
  *  - Display the current APY on the simulation home page
  *  - Display APY history on the staking simulation page
  * Backend Uses:
  *  - Used to run simulations
- * 
+ *
  * @param {string} [req.query.start] - Optional start date in ISO 8601 format (e.g., "2023-01-01")
  * @param {string} [req.query.end] - Optional end date in ISO 8601 format (e.g., "2023-12-31")
- * @returns {Object} JSON object with a 'apyHistory' property containing an array of objects, each with 'timestamp' and 'apy_percentage', ordered by timestamp ascending
+ * @returns {Object} JSON object with a 'apyHistory' property containing an array of objects, each
+ *                   with 'timestamp' and 'apy_percentage', ordered by timestamp ascending
  * @throws {400} If start/end parameters are invalid or start is after end
  * @throws {500} If an unexpected server error occurs
  */
@@ -86,25 +92,29 @@ router.get('/apy-history', async (req, res) => {
     let whereClause = {};
     whereClause = addDatesToWhereClause(whereClause, startDate, endDate);
 
-    const apyHistory = await req.app.locals.models.ETHStakingHistorical.findAll({
-      where: whereClause,
-      order: [['timestamp', 'ASC']],
-    });
+    const apyHistory = await req.app.locals.models.ETHStakingHistorical.findAll(
+      {
+        where: whereClause,
+        order: [['timestamp', 'ASC']],
+      },
+    );
 
-    res.json({ apyHistory });
+    return res.json({ apyHistory });
   } catch (error) {
     console.error('Error in /apy-history:', error);
-    res.status(500).json({ message: 'An unexpected error occurred.' });
+    return res.status(500).json({ message: 'An unexpected error occurred.' });
   }
 });
 
 /**
  * Retrieves pool addresses and token names for each pool in the Pool table.
- * 
+ *
  * Frontend Uses:
- *  - Display available LPs on the simulation home page (use pool_address to query data for a particular pool)
- * 
- * @returns {Object} JSON object with a 'pools' property containing an array of objects, each with 'pool_address', 'token0_symbol', and 'token1_symbol'
+ *  - Display available LPs on the simulation home page
+ *    (use pool_address to query data for a particular pool)
+ *
+ * @returns {Object} JSON object with a 'pools' property containing an array of objects,
+ *                   each with 'pool_address', 'token0_symbol', and 'token1_symbol'
  * @throws {500} If an unexpected server error occurs
  */
 router.get('/pools', async (req, res) => {
@@ -113,26 +123,30 @@ router.get('/pools', async (req, res) => {
       throw new Error('Pool model is not available');
     }
     const pools = await req.app.locals.models.Pool.findAll();
-    res.json({ pools });
+    return res.json({ pools });
   } catch (error) {
     console.error('Error in /pools:', error);
-    res.status(500).json({ message: 'An unexpected error occurred.' });
+    return res.status(500).json({ message: 'An unexpected error occurred.' });
   }
 });
 
 /**
- * Retrieves historical data for a given pool address from the LPHistorical table, optionally filtered by a date range.
- * 
+ * Retrieves historical data for a given pool address from the LPHistorical table,
+ * optionally filtered by a date range.
+ *
  * Frontend Uses:
  *  - Display LP's details on its simulation page
  * Backend Uses:
  *  - Used to run simulations
- * 
+ *
  * @param {string} req.query.address - The address of the pool to retrieve data for
  * @param {string} [req.query.start] - Optional start date in ISO 8601 format (e.g., "2023-01-01")
  * @param {string} [req.query.end] - Optional end date in ISO 8601 format (e.g., "2023-12-31")
- * @returns {Object} JSON object with a 'poolData' property containing an array of objects, each with 'timestamp', 'pool_address', 'tvl_usd', 'volume_24h_usd', and 'fees_24h_usd', ordered by timestamp ascending
- * @throws {400} If address parameter is missing or invalid, or if start/end parameters are invalid or start is after end
+ * @returns {Object} JSON object with a 'poolData' property containing an array of objects, each
+ *                   with 'timestamp', 'pool_address', 'tvl_usd', 'volume_24h_usd', and
+ *                   'fees_24h_usd', ordered by timestamp ascending
+ * @throws {400} If address parameter is missing or invalid, or if start/end parameters are invalid
+ *               or start is after end
  * @throws {500} If an unexpected server error occurs
  */
 router.get('/pool', async (req, res) => {
@@ -165,15 +179,16 @@ router.get('/pool', async (req, res) => {
       order: [['timestamp', 'ASC']],
     });
 
-    res.json({ poolData });
+    return res.json({ poolData });
   } catch (error) {
     console.error(`Error in /pool for pool ${req.query.address}:`, error);
-    res.status(500).json({ message: 'An unexpected error occurred.' });
+    return res.status(500).json({ message: 'An unexpected error occurred.' });
   }
 });
 
 /**
- * Retrieves historical price data for a token from the TokenPrice table, optionally filtered by a date range.
+ * Retrieves historical price data for a token from the TokenPrice table,
+ * optionally filtered by a date range.
  *
  * Frontend Uses:
  *  - Display price history on the staking & LP simulation pages
@@ -183,8 +198,11 @@ router.get('/pool', async (req, res) => {
  * @param {string} req.query.token - The symbol of the token to retrieve data for (e.g., "WETH")
  * @param {string} [req.query.start] - Optional start date in ISO 8601 format (e.g., "2023-01-01")
  * @param {string} [req.query.end] - Optional end date in ISO 8601 format (e.g., "2023-12-31")
- * @returns {Object} JSON object with a 'priceData' property containing an array of objects, each with 'timestamp', 'token_symbol', and 'price_usd', ordered by timestamp ascending
- * @throws {400} If token parameter is missing or invalid, or if start/end parameters are invalid or start is after end
+ * @returns {Object} JSON object with a 'priceData' property containing an array of objects, each
+ *                   with 'timestamp', 'token_symbol', and 'price_usd', ordered by timestamp
+ *                   ascending
+ * @throws {400} If token parameter is missing or invalid, or if start/end parameters are invalid
+ *               or start is after end
  * @throws {500} If an unexpected server error occurs
  */
 router.get('/price-history', async (req, res) => {
@@ -218,10 +236,13 @@ router.get('/price-history', async (req, res) => {
       order: [['timestamp', 'ASC']],
     });
 
-    res.json({ priceData });
+    return res.json({ priceData });
   } catch (error) {
-    console.error(`Error in /price-history for token ${req.query.token}:`, error);
-    res.status(500).json({ message: 'An unexpected error occurred.' });
+    console.error(
+      `Error in /price-history for token ${req.query.token}:`,
+      error,
+    );
+    return res.status(500).json({ message: 'An unexpected error occurred.' });
   }
 });
 
