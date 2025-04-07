@@ -1,16 +1,15 @@
 import { Sequelize } from 'sequelize';
-
-const sequelize = new Sequelize(process.env.DB_URL, {
-  dialect: 'postgres',
-  protocol: 'postgres'
-});
-
-// Import models
 import Token from './token.js';
 import Pool from './pool.js';
 import TokenPrice from './tokenPrice.js';
 import LPHistorical from './lpHistorical.js';
 import ETHStakingHistorical from './ethStakingHistorical.js';
+
+const sequelize = new Sequelize(process.env.DB_URL, {
+  dialect: 'postgres',
+  protocol: 'postgres',
+  logging: false,
+});
 
 // Initialize models
 const models = {
@@ -18,15 +17,27 @@ const models = {
   Pool: Pool.init(sequelize),
   TokenPrice: TokenPrice.init(sequelize),
   LPHistorical: LPHistorical.init(sequelize),
-  ETHStakingHistorical: ETHStakingHistorical.init(sequelize)
+  ETHStakingHistorical: ETHStakingHistorical.init(sequelize),
 };
 
 // Define associations
-models.Pool.belongsTo(models.Token, { as: 'token0', foreignKey: 'token0_symbol' });
-models.Token.hasMany(models.Pool, { as: 'poolsAsToken0', foreignKey: 'token0_symbol' });
+models.Pool.belongsTo(models.Token, {
+  as: 'token0',
+  foreignKey: 'token0_symbol',
+});
+models.Token.hasMany(models.Pool, {
+  as: 'poolsAsToken0',
+  foreignKey: 'token0_symbol',
+});
 
-models.Pool.belongsTo(models.Token, { as: 'token1', foreignKey: 'token1_symbol' });
-models.Token.hasMany(models.Pool, { as: 'poolsAsToken1', foreignKey: 'token1_symbol' });
+models.Pool.belongsTo(models.Token, {
+  as: 'token1',
+  foreignKey: 'token1_symbol',
+});
+models.Token.hasMany(models.Pool, {
+  as: 'poolsAsToken1',
+  foreignKey: 'token1_symbol',
+});
 
 models.TokenPrice.belongsTo(models.Token, { foreignKey: 'token_symbol' });
 models.Token.hasMany(models.TokenPrice, { foreignKey: 'token_symbol' });

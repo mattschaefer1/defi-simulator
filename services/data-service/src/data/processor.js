@@ -1,8 +1,9 @@
-import { poolAddresses } from "../config/pools.js";
+import { poolAddresses } from '../config/pools.js';
 
 /**
  * Converts a date string or timestamp to an ISO string.
- * @param {string|number} date - Date string (e.g., '2023-01-01') or Unix timestamp (in milliseconds).
+ * @param {string|number} date - Date string (e.g., '2023-01-01') or
+ *                               Unix timestamp (in milliseconds).
  * @returns {string|null} ISO date string (UTC), or null if the input is invalid.
  */
 function convertToISOString(date) {
@@ -11,7 +12,7 @@ function convertToISOString(date) {
     return null;
   }
   const parsedDate = new Date(date);
-  return isNaN(parsedDate.getTime()) ? null : parsedDate.toISOString();
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate.toISOString();
 }
 
 /**
@@ -21,18 +22,26 @@ function convertToISOString(date) {
  * @returns {number|null} Rounded number, or null if inputs are invalid.
  */
 function roundToDecimal(num, numOfPlaces) {
-  if (typeof num !== 'number' || !Number.isInteger(numOfPlaces) || numOfPlaces < 0) {
-    console.warn(`Invalid inputs for rounding: num=${num}, numOfPlaces=${numOfPlaces}`);
+  if (
+    typeof num !== 'number' ||
+    !Number.isInteger(numOfPlaces) ||
+    numOfPlaces < 0
+  ) {
+    console.warn(
+      `Invalid inputs for rounding: num=${num}, numOfPlaces=${numOfPlaces}`,
+    );
     return null;
   }
-  const factor = Math.pow(10, numOfPlaces);
+  const factor = 10 ** numOfPlaces;
   return Math.round(num * factor) / factor;
 }
 
 /**
  * Formats raw daily pool data from DeFi Llama.
- * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string) and 'apy' (number).
- * @returns {Array<Object>} Processed daily APY data with 'timestamp' (ISO string) and 'apyPercentage'.
+ * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string)
+ *                                  and 'apy' (number).
+ * @returns {Array<Object>} Processed daily APY data with 'timestamp' (ISO string) and
+ *                          'apyPercentage'.
  */
 function formatApyData(rawData) {
   if (!Array.isArray(rawData)) {
@@ -40,8 +49,11 @@ function formatApyData(rawData) {
     return [];
   }
   return rawData
-    .filter(day => day && typeof day.timestamp === 'string' && typeof day.apy === 'number')
-    .map(day => {
+    .filter(
+      (day) =>
+        day && typeof day.timestamp === 'string' && typeof day.apy === 'number',
+    )
+    .map((day) => {
       const timestamp = convertToISOString(day.timestamp.substring(0, 10));
       const apyPercentage = roundToDecimal(day.apy, 2);
       if (timestamp === null || apyPercentage === null) {
@@ -50,12 +62,13 @@ function formatApyData(rawData) {
       }
       return { timestamp, apyPercentage };
     })
-    .filter(item => item !== null);
+    .filter((item) => item !== null);
 }
 
 /**
  * Formats raw daily pool data from DeFi Llama.
- * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string) and 'tvlUsd' (number).
+ * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string)
+ *                                  and 'tvlUsd' (number).
  * @returns {Array<Object>} Processed daily TVL data with 'timestamp' (ISO string) and 'tvlUsd'.
  */
 function formatTvlData(rawData) {
@@ -64,8 +77,13 @@ function formatTvlData(rawData) {
     return [];
   }
   return rawData
-    .filter(day => day && typeof day.timestamp === 'string' && typeof day.tvlUsd === 'number')
-    .map(day => {
+    .filter(
+      (day) =>
+        day &&
+        typeof day.timestamp === 'string' &&
+        typeof day.tvlUsd === 'number',
+    )
+    .map((day) => {
       const timestamp = convertToISOString(day.timestamp.substring(0, 10));
       const tvlUsd = roundToDecimal(day.tvlUsd, 6);
       if (timestamp === null || tvlUsd === null) {
@@ -74,12 +92,13 @@ function formatTvlData(rawData) {
       }
       return { timestamp, tvlUsd };
     })
-    .filter(item => item !== null);
+    .filter((item) => item !== null);
 }
 
 /**
  * Formats raw daily token price data from CoinGecko.
- * @param {Array<Array<number>>} rawData - Raw price data array, each item is [timestamp (number), price (number)].
+ * @param {Array<Array<number>>} rawData - Raw price data array, each item is
+ *                                         [timestamp (number), price (number)].
  * @returns {Array<Object>} Processed token price data with 'timestamp' (ISO string) and 'priceUsd'.
  */
 function formatPriceData(rawData) {
@@ -88,23 +107,31 @@ function formatPriceData(rawData) {
     return [];
   }
   return rawData
-    .filter(day => Array.isArray(day) && day.length === 2 && typeof day[0] === 'number' && typeof day[1] === 'number')
-    .map(day => {
+    .filter(
+      (day) =>
+        Array.isArray(day) &&
+        day.length === 2 &&
+        typeof day[0] === 'number' &&
+        typeof day[1] === 'number',
+    )
+    .map((day) => {
       const timestamp = convertToISOString(day[0]);
       const priceUsd = roundToDecimal(day[1], 6);
       if (timestamp === null || priceUsd === null) {
         console.warn(`Invalid price data: ${JSON.stringify(day)}`);
         return null;
       }
-      return { timestamp: timestamp.slice(0, 10) + "T00:00:00.000Z", priceUsd };
+      return { timestamp: `${timestamp.slice(0, 10)}T00:00:00.000Z`, priceUsd };
     })
-    .filter(item => item !== null);
+    .filter((item) => item !== null);
 }
 
 /**
  * Formats raw daily pool data from Uniswap Subgraph.
- * @param {Array<Object>} rawData - Raw data array with objects containing 'date' (number), 'feesUSD' (string), 'volumeUSD' (string).
- * @returns {Array<Object>} Processed daily pool data arranged from oldest to most recent with 'timestamp', 'feesUSD', 'volumeUSD'.
+ * @param {Array<Object>} rawData - Raw data array with objects containing 'date' (number),
+ *                                  'feesUSD' (string), 'volumeUSD' (string).
+ * @returns {Array<Object>} Processed daily pool data arranged from oldest to most recent with
+ *                          'timestamp', 'feesUSD', 'volumeUSD'.
  */
 function formatUniswapPoolData(rawData) {
   if (!Array.isArray(rawData)) {
@@ -113,8 +140,14 @@ function formatUniswapPoolData(rawData) {
   }
   const reversedData = [...rawData].reverse();
   return reversedData
-    .filter(day => day && typeof day.date === 'number' && typeof day.feesUSD === 'string' && typeof day.volumeUSD === 'string')
-    .map(day => {
+    .filter(
+      (day) =>
+        day &&
+        typeof day.date === 'number' &&
+        typeof day.feesUSD === 'string' &&
+        typeof day.volumeUSD === 'string',
+    )
+    .map((day) => {
       const timestamp = convertToISOString(day.date * 1000);
       const feesUSD = roundToDecimal(parseFloat(day.feesUSD), 6);
       const volumeUSD = roundToDecimal(parseFloat(day.volumeUSD), 6);
@@ -124,13 +157,15 @@ function formatUniswapPoolData(rawData) {
       }
       return { timestamp, feesUSD, volumeUSD };
     })
-    .filter(item => item !== null);
+    .filter((item) => item !== null);
 }
 
 /**
  * Processes APY and TVL data for each pool.
- * @param {Object<string, Array<Object>>} apyTvlData - Pool data with keys as pool names and values as arrays of pool data objects.
- * @returns {Array<Object<string, Array<Object>>>} [APY data object, TVL data object] with formatted pool data.
+ * @param {Object<string, Array<Object>>} apyTvlData - Pool data with keys as pool names and values
+ *                                                     as arrays of pool data objects.
+ * @returns {Array<Object<string, Array<Object>>>} [APY data object, TVL data object] with
+ *                                                 formatted pool data.
  */
 export function processPoolDataResponse(apyTvlData) {
   const processedApyData = {};
@@ -151,7 +186,9 @@ export function processPoolDataResponse(apyTvlData) {
 
 /**
  * Processes price data for each token.
- * @param {Object<string, Array<Array<number>>>} priceData - Token data with keys as token names and values as arrays of [timestamp, price] pairs.
+ * @param {Object<string, Array<Array<number>>>} priceData - Token data with keys as token names
+ *                                                           and values as arrays of
+ *                                                           [timestamp, price] pairs.
  * @returns {Object<string, Array<Object>>} Token data with formatted price objects.
  */
 export function processPriceDataResponse(priceData) {
@@ -162,13 +199,14 @@ export function processPriceDataResponse(priceData) {
         return [tokenName, []];
       }
       return [tokenName, formatPriceData(data)];
-    })
+    }),
   );
 }
 
 /**
  * Processes Uniswap pool data for each pool.
- * @param {Object<string, Array<Object>>} uniswapPoolsData - Pool data with keys as pool names and values as arrays of pool data objects.
+ * @param {Object<string, Array<Object>>} uniswapPoolsData - Pool data with keys as pool names and
+ *                                                           values as arrays of pool data objects.
  * @returns {Object<string, Array<Object>>} Pool data with formatted objects.
  */
 export function processUniswapPoolDataResponse(uniswapPoolsData) {
@@ -179,14 +217,17 @@ export function processUniswapPoolDataResponse(uniswapPoolsData) {
         return [poolName, []];
       }
       return [poolName, formatUniswapPoolData(data)];
-    })
+    }),
   );
 }
 
 /**
- * Removes duplicate timestamps from each array within the given data object, keeping the last occurrence.
- * @param {Object<string, Array<Object>>} data - Object with keys mapping to arrays of objects with a 'timestamp' string property.
- * @returns {Object<string, Array<Object>>} New object with unique, sorted timestamps per key, or empty object if input is invalid.
+ * Removes duplicate timestamps from each array within the given data object, keeping the last
+ * occurrence.
+ * @param {Object<string, Array<Object>>} data - Object with keys mapping to arrays of objects with
+ *                                               a 'timestamp' string property.
+ * @returns {Object<string, Array<Object>>} New object with unique, sorted timestamps per key, or
+ *                                          empty object if input is invalid.
  */
 export function removeDuplicateTimestamps(data) {
   if (typeof data !== 'object' || data === null) {
@@ -194,27 +235,30 @@ export function removeDuplicateTimestamps(data) {
     return {};
   }
   const result = {};
-  for (const key in data) {
-    if (data.hasOwnProperty(key)) {
-      const array = data[key];
-      if (!Array.isArray(array)) {
-        console.error(`Data for key '${key}' is not an array`);
-        result[key] = [];
-        continue;
-      }
-      const lastOccurrences = new Map();
-      for (const element of array) {
-        if (element && typeof element.timestamp === 'string' && !isNaN(new Date(element.timestamp))) {
-          lastOccurrences.set(element.timestamp, element);
-        } else {
-          console.warn(`Invalid or missing timestamp in element for key '${key}': ${JSON.stringify(element)}`);
-        }
-      }
-      result[key] = Array.from(lastOccurrences.values()).sort(
-        (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-      );
+  Object.entries(data).forEach(([key, array]) => {
+    if (!Array.isArray(array)) {
+      console.error(`Data for key '${key}' is not an array`);
+      result[key] = [];
+      return;
     }
-  }
+    const lastOccurrences = new Map();
+    array.forEach((element) => {
+      if (
+        element &&
+        typeof element.timestamp === 'string' &&
+        !Number.isNaN(new Date(element.timestamp))
+      ) {
+        lastOccurrences.set(element.timestamp, element);
+      } else {
+        console.warn(
+          `Invalid or missing timestamp in element for key '${key}': ${JSON.stringify(element)}`,
+        );
+      }
+    });
+    result[key] = Array.from(lastOccurrences.values()).sort(
+      (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
+    );
+  });
   return result;
 }
 
@@ -222,7 +266,8 @@ export function removeDuplicateTimestamps(data) {
  * Trims each array in the data object to the specified maxLength, keeping the most recent entries.
  * @param {Object<string, Array<Object>>} data - Object with keys mapping to arrays of objects.
  * @param {number} [maxLength=365] - Positive integer specifying maximum entries to keep.
- * @returns {Object<string, Array<Object>>} Trimmed data object, or empty object if input is invalid.
+ * @returns {Object<string, Array<Object>>} Trimmed data object, or empty object if
+ *                                          input is invalid.
  */
 export function trimData(data, maxLength = 365) {
   if (typeof data !== 'object' || data === null) {
@@ -230,16 +275,21 @@ export function trimData(data, maxLength = 365) {
     return {};
   }
   if (!Number.isInteger(maxLength) || maxLength < 0) {
-    console.error(`Invalid maxLength: ${maxLength}, must be a non-negative integer`);
+    console.error(
+      `Invalid maxLength: ${maxLength}, must be a non-negative integer`,
+    );
     return data;
   }
   const trimmedData = {};
   Object.entries(data).forEach(([key, value]) => {
     if (!Array.isArray(value)) {
-      console.warn(`Value for key '${key}' is not an array; setting to empty array`);
+      console.warn(
+        `Value for key '${key}' is not an array; setting to empty array`,
+      );
       trimmedData[key] = [];
     } else {
-      trimmedData[key] = value.length > maxLength ? value.slice(-maxLength) : value;
+      trimmedData[key] =
+        value.length > maxLength ? value.slice(-maxLength) : value;
     }
   });
   return trimmedData;
@@ -247,8 +297,10 @@ export function trimData(data, maxLength = 365) {
 
 /**
  * Identifies missing dates in each array of the data object based on timestamps.
- * @param {Object<string, Array<{timestamp: string}>>} data - Object with arrays of objects containing 'timestamp' strings.
- * @returns {Object<string, Array<string>>} Object mapping keys to arrays of missing date ISO strings.
+ * @param {Object<string, Array<{timestamp: string}>>} data - Object with arrays of objects
+ *                                                            containing 'timestamp' strings.
+ * @returns {Object<string, Array<string>>} Object mapping keys to arrays of missing date
+ *                                          ISO strings.
  */
 export function findMissingDates(data) {
   if (typeof data !== 'object' || data === null) {
@@ -256,41 +308,46 @@ export function findMissingDates(data) {
     return {};
   }
   const missingDatesByKey = {};
-  for (const key in data) {
-    if (data.hasOwnProperty(key)) {
-      const records = data[key];
-      if (!Array.isArray(records)) {
-        console.warn(`Data for key '${key}' is not an array`);
-        continue;
-      }
-      const dates = records
-        .map(r => {
-          if (r && typeof r.timestamp === 'string' && !isNaN(new Date(r.timestamp))) {
-            const d = new Date(r.timestamp);
-            return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-          }
-          console.warn(`Invalid timestamp in record for key '${key}': ${JSON.stringify(r)}`);
-          return null;
-        })
-        .filter(d => d !== null)
-        .sort((a, b) => a - b);
-
-      if (dates.length < 2) continue;
-
-      const missingDates = [];
-      for (let i = 0; i < dates.length - 1; i++) {
-        let expectedDate = new Date(dates[i].getTime());
-        expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
-        while (expectedDate < dates[i + 1]) {
-          missingDates.push(expectedDate.toISOString());
-          expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
+  Object.entries(data).forEach(([key, records]) => {
+    if (!Array.isArray(records)) {
+      console.warn(`Data for key '${key}' is not an array`);
+      return;
+    }
+    const dates = records
+      .map((r) => {
+        if (
+          r &&
+          typeof r.timestamp === 'string' &&
+          !Number.isNaN(new Date(r.timestamp))
+        ) {
+          const d = new Date(r.timestamp);
+          return new Date(
+            Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
+          );
         }
-      }
-      if (missingDates.length > 0) {
-        missingDatesByKey[key] = missingDates;
+        console.warn(
+          `Invalid timestamp in record for key '${key}': ${JSON.stringify(r)}`,
+        );
+        return null;
+      })
+      .filter((d) => d !== null)
+      .sort((a, b) => a - b);
+
+    if (dates.length < 2) return;
+
+    const missingDates = [];
+    for (let i = 0; i < dates.length - 1; i += 1) {
+      const expectedDate = new Date(dates[i].getTime());
+      expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
+      while (expectedDate < dates[i + 1]) {
+        missingDates.push(expectedDate.toISOString());
+        expectedDate.setUTCDate(expectedDate.getUTCDate() + 1);
       }
     }
-  }
+    if (missingDates.length > 0) {
+      missingDatesByKey[key] = missingDates;
+    }
+  });
   return missingDatesByKey;
 }
 
@@ -301,7 +358,12 @@ export function findMissingDates(data) {
  * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
  */
 function findDateBefore(date, numDays) {
-  if (!(date instanceof Date) || isNaN(date.getTime()) || !Number.isInteger(numDays) || numDays < 0) {
+  if (
+    !(date instanceof Date) ||
+    Number.isNaN(date.getTime()) ||
+    !Number.isInteger(numDays) ||
+    numDays < 0
+  ) {
     console.warn(`Invalid inputs: date=${date}, numDays=${numDays}`);
     return null;
   }
@@ -309,8 +371,8 @@ function findDateBefore(date, numDays) {
     Date.UTC(
       date.getUTCFullYear(),
       date.getUTCMonth(),
-      date.getUTCDate() - numDays
-    )
+      date.getUTCDate() - numDays,
+    ),
   ).toISOString();
 }
 
@@ -321,7 +383,12 @@ function findDateBefore(date, numDays) {
  * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
  */
 function findDateAfter(date, numDays) {
-  if (!(date instanceof Date) || isNaN(date.getTime()) || !Number.isInteger(numDays) || numDays < 0) {
+  if (
+    !(date instanceof Date) ||
+    Number.isNaN(date.getTime()) ||
+    !Number.isInteger(numDays) ||
+    numDays < 0
+  ) {
     console.warn(`Invalid inputs: date=${date}, numDays=${numDays}`);
     return null;
   }
@@ -329,8 +396,8 @@ function findDateAfter(date, numDays) {
     Date.UTC(
       date.getUTCFullYear(),
       date.getUTCMonth(),
-      date.getUTCDate() + numDays
-    )
+      date.getUTCDate() + numDays,
+    ),
   ).toISOString();
 }
 
@@ -342,15 +409,26 @@ function findDateAfter(date, numDays) {
  * @returns {[string[], string[]]} Two arrays: dates before and after the missing date.
  */
 function findValidDates(missingDate, timestamps, maxDays = 7) {
-  if (!(missingDate instanceof Date) || isNaN(missingDate.getTime()) || 
-      !Array.isArray(timestamps) || !Number.isInteger(maxDays) || maxDays < 1) {
-    console.warn(`Invalid inputs: missingDate=${missingDate}, timestamps=${timestamps}, maxDays=${maxDays}`);
+  if (
+    !(missingDate instanceof Date) ||
+    Number.isNaN(missingDate.getTime()) ||
+    !Array.isArray(timestamps) ||
+    !Number.isInteger(maxDays) ||
+    maxDays < 1
+  ) {
+    console.warn(
+      `Invalid inputs: missingDate=${missingDate}, timestamps=${timestamps}, maxDays=${maxDays}`,
+    );
     return [[], []];
   }
   const timestampSet = new Set(timestamps);
   const beforeDates = [];
   const afterDates = [];
-  for (let i = 1; i <= maxDays && (beforeDates.length < 2 || afterDates.length < 2); i++) {
+  for (
+    let i = 1;
+    i <= maxDays && (beforeDates.length < 2 || afterDates.length < 2);
+    i += 1
+  ) {
     if (beforeDates.length < 2) {
       const beforeDay = findDateBefore(missingDate, i);
       if (beforeDay && timestampSet.has(beforeDay)) beforeDates.push(beforeDay);
@@ -366,12 +444,15 @@ function findValidDates(missingDate, timestamps, maxDays = 7) {
 /**
  * Retrieves metrics from records for the given valid dates.
  * @param {string[]} validDates - Array of ISO timestamp strings.
- * @param {Map<string, Object>} recordMap - Map of timestamps to records with metric key-value pairs.
+ * @param {Map<string, Object>} recordMap - Map of timestamps to records with metric
+ *                                          key-value pairs.
  * @returns {Object<string, Array<number>>} Metrics object with arrays of values per metric.
  */
 function getMetrics(validDates, recordMap) {
   if (!Array.isArray(validDates) || !(recordMap instanceof Map)) {
-    console.warn(`Invalid inputs: validDates=${validDates}, recordMap=${recordMap}`);
+    console.warn(
+      `Invalid inputs: validDates=${validDates}, recordMap=${recordMap}`,
+    );
     return {};
   }
   const metrics = {};
@@ -397,45 +478,69 @@ function getMetrics(validDates, recordMap) {
  */
 function simulateMetrics(metricsBefore, metricsAfter) {
   if (typeof metricsBefore !== 'object' || typeof metricsAfter !== 'object') {
-    console.warn(`Invalid inputs: metricsBefore=${metricsBefore}, metricsAfter=${metricsAfter}`);
+    console.warn(
+      `Invalid inputs: metricsBefore=${metricsBefore}, metricsAfter=${metricsAfter}`,
+    );
     return {};
   }
   const simulatedMetrics = {};
-  const allMetrics = new Set([...Object.keys(metricsBefore || {}), ...Object.keys(metricsAfter || {})]);
-  
-  for (const metric of allMetrics) {
-    const beforeValues = Array.isArray(metricsBefore[metric]) ? metricsBefore[metric].filter(v => typeof v === 'number') : [];
-    const afterValues = Array.isArray(metricsAfter[metric]) ? metricsAfter[metric].filter(v => typeof v === 'number') : [];
+  const allMetrics = new Set([
+    ...Object.keys(metricsBefore || {}),
+    ...Object.keys(metricsAfter || {}),
+  ]);
+
+  Array.from(allMetrics).forEach((metric) => {
+    const beforeValues = Array.isArray(metricsBefore[metric])
+      ? metricsBefore[metric].filter((v) => typeof v === 'number')
+      : [];
+    const afterValues = Array.isArray(metricsAfter[metric])
+      ? metricsAfter[metric].filter((v) => typeof v === 'number')
+      : [];
     let simulatedValue;
 
     if (beforeValues.length > 0 && afterValues.length > 0) {
-      const avgBefore = beforeValues.reduce((a, b) => a + b, 0) / beforeValues.length;
-      const avgAfter = afterValues.reduce((a, b) => a + b, 0) / afterValues.length;
+      const avgBefore =
+        beforeValues.reduce((a, b) => a + b, 0) / beforeValues.length;
+      const avgAfter =
+        afterValues.reduce((a, b) => a + b, 0) / afterValues.length;
       const min = Math.min(avgBefore, avgAfter);
       const max = Math.max(avgBefore, avgAfter);
       simulatedValue = Math.floor(Math.random() * (max - min) + min);
     } else if (beforeValues.length > 0) {
-      simulatedValue = Math.floor(beforeValues.reduce((a, b) => a + b, 0) / beforeValues.length);
+      simulatedValue = Math.floor(
+        beforeValues.reduce((a, b) => a + b, 0) / beforeValues.length,
+      );
     } else if (afterValues.length > 0) {
-      simulatedValue = Math.floor(afterValues.reduce((a, b) => a + b, 0) / afterValues.length);
+      simulatedValue = Math.floor(
+        afterValues.reduce((a, b) => a + b, 0) / afterValues.length,
+      );
     } else {
       simulatedValue = 0;
       console.warn(`No numeric data for metric '${metric}', defaulting to 0`);
     }
     simulatedMetrics[metric] = simulatedValue;
-  }
+  });
   return simulatedMetrics;
 }
 
 /**
  * Fills missing dates in the data object with simulated metrics.
- * @param {Object<string, Array<{timestamp: string, [key: string]: number}>>} data - Object with arrays of objects containing 'timestamp' (string) and metric key-value pairs.
+ * @param {Object<string, Array<{timestamp: string, [key: string]: number}>>} data -
+ *    Object with arrays of objects containing 'timestamp' (string) and metric key-value pairs.
  * @param {Object<string, Array<string>>} missingDates - Missing dates as ISO strings per key.
- * @returns {Object<string, Array<{timestamp: string, [key: string]: number}>>} Data with filled missing dates.
+ * @returns {Object<string, Array<{timestamp: string, [key: string]: number}>>}
+ *    Data with filled missing dates.
  */
 export function fillMissingDates(data, missingDates) {
-  if (typeof data !== 'object' || typeof missingDates !== 'object' || data === null || missingDates === null) {
-    console.error('Invalid inputs: data or missingDates must be non-null objects');
+  if (
+    typeof data !== 'object' ||
+    typeof missingDates !== 'object' ||
+    data === null ||
+    missingDates === null
+  ) {
+    console.error(
+      'Invalid inputs: data or missingDates must be non-null objects',
+    );
     return data || {};
   }
   const filledData = {};
@@ -450,36 +555,47 @@ export function fillMissingDates(data, missingDates) {
       return;
     }
     const newRecords = [];
-    const recordMap = new Map(records.map(r => [r.timestamp, r]));
-    const timestamps = records.map(r => r.timestamp);
+    const recordMap = new Map(records.map((r) => [r.timestamp, r]));
+    const timestamps = records.map((r) => r.timestamp);
 
-    for (const date of dates) {
+    dates.forEach((date) => {
       const missingDate = new Date(date);
-      if (isNaN(missingDate.getTime())) {
+      if (Number.isNaN(missingDate.getTime())) {
         console.warn(`Invalid date '${date}' for key '${key}'`);
-        continue;
+        return;
       }
-      const [validDatesBefore, validDatesAfter] = findValidDates(missingDate, timestamps);
+      const [validDatesBefore, validDatesAfter] = findValidDates(
+        missingDate,
+        timestamps,
+      );
       if (validDatesBefore.length > 0 || validDatesAfter.length > 0) {
         const metricsBefore = getMetrics(validDatesBefore, recordMap);
         const metricsAfter = getMetrics(validDatesAfter, recordMap);
         const simulatedMetrics = simulateMetrics(metricsBefore, metricsAfter);
-        newRecords.push({ timestamp: missingDate.toISOString(), ...simulatedMetrics });
+        newRecords.push({
+          timestamp: missingDate.toISOString(),
+          ...simulatedMetrics,
+        });
       } else {
         console.warn(`No valid dates found for ${date} in '${key}'`);
         if (records.length === 0) {
           console.error(`No data available for '${key}'. Skipping.`);
-          continue;
+          return;
         }
         const sampleRecord = records[0];
         const simulatedMetrics = {};
-        Object.keys(sampleRecord).forEach(k => {
+        Object.keys(sampleRecord).forEach((k) => {
           if (k !== 'timestamp') simulatedMetrics[k] = 0;
         });
-        newRecords.push({ timestamp: missingDate.toISOString(), ...simulatedMetrics });
+        newRecords.push({
+          timestamp: missingDate.toISOString(),
+          ...simulatedMetrics,
+        });
       }
-    }
-    filledData[key] = [...records, ...newRecords].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    });
+    filledData[key] = [...records, ...newRecords].sort(
+      (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
+    );
   });
   return Object.keys(filledData).length > 0 ? filledData : data;
 }
@@ -491,39 +607,64 @@ export function fillMissingDates(data, missingDates) {
  * @returns {boolean} True if timestamps align, false otherwise.
  */
 function checkTimestampAlignment(tvlData, uniswapPoolsData) {
-  if (typeof tvlData !== 'object' || typeof uniswapPoolsData !== 'object' || tvlData === null || uniswapPoolsData === null) {
-    console.error('Invalid inputs: tvlData or uniswapPoolsData must be non-null objects');
+  if (
+    typeof tvlData !== 'object' ||
+    typeof uniswapPoolsData !== 'object' ||
+    tvlData === null ||
+    uniswapPoolsData === null
+  ) {
+    console.error(
+      'Invalid inputs: tvlData or uniswapPoolsData must be non-null objects',
+    );
     return false;
   }
-  for (const [poolName, data] of Object.entries(uniswapPoolsData)) {
-    if (!tvlData.hasOwnProperty(poolName)) {
+  return Object.entries(uniswapPoolsData).every(([poolName, data]) => {
+    if (!Object.prototype.hasOwnProperty.call(tvlData, poolName)) {
       console.error(`Pool '${poolName}' not found in tvlData`);
       return false;
     }
     const tvlDataOfPool = tvlData[poolName];
     if (!Array.isArray(data) || !Array.isArray(tvlDataOfPool)) {
-      console.error(`Data for pool '${poolName}' is not an array in one of the datasets`);
+      console.error(
+        `Data for pool '${poolName}' is not an array in one of the datasets`,
+      );
       return false;
     }
     if (data.length !== tvlDataOfPool.length) {
-      console.error(`Data length mismatch for pool '${poolName}': uniswapPoolsData has ${data.length}, tvlData has ${tvlDataOfPool.length}`);
+      console.error(
+        `Data length mismatch for pool '${poolName}': uniswapPoolsData has ${data.length}, tvlData has ${tvlDataOfPool.length}`,
+      );
       return false;
     }
-    for (let i = 0; i < data.length; i++) {
-      if (!data[i] || !tvlDataOfPool[i] || data[i].timestamp !== tvlDataOfPool[i].timestamp) {
-        console.error(`Timestamp mismatch at index ${i} of pool '${poolName}': ${data[i]?.timestamp} !== ${tvlDataOfPool[i]?.timestamp}`);
+    return Array.from({ length: data.length }).every((_, i) => {
+      if (
+        !data[i] ||
+        !tvlDataOfPool[i] ||
+        data[i].timestamp !== tvlDataOfPool[i].timestamp
+      ) {
+        console.error(
+          `Timestamp mismatch at index ${i} of pool '${poolName}': ${data[i]?.timestamp} !== ${tvlDataOfPool[i]?.timestamp}`,
+        );
         return false;
       }
-    }
-  }
-  return true;
+      return true;
+    });
+  });
 }
 
 /**
  * Formats Uniswap pool data with TVL and pool addresses if timestamps align.
  * @param {Object<string, Array<{timestamp: string, tvlUsd: number}>>} tvlData - TVL data per pool.
- * @param {Object<string, Array<{timestamp: string, [key: string]: number}>>} uniswapPoolsData - Uniswap data per pool.
- * @returns {Object<string, Array<{timestamp: string, poolAddress: string, tvlUsd: number, [key: string]: any}>>} Formatted data or empty object if not aligned.
+ * @param {Object<string, Array<{
+ *   timestamp: string,
+ *   [key: string]: number
+ * }>>} uniswapPoolsData - Uniswap data per pool.
+ * @returns {Object<string, Array<{
+ *   timestamp: string,
+ *   poolAddress: string,
+ *   tvlUsd: number,
+ *   [key: string]: any
+ * }>>} Formatted data or empty object if not aligned.
  */
 export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
   const liquidityPoolData = {};
@@ -541,7 +682,7 @@ export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
         return {
           ...poolDataForDay,
           poolAddress,
-          tvlUsd: tvlForDay['tvlUsd']
+          tvlUsd: tvlForDay.tvlUsd,
         };
       });
     });
@@ -553,8 +694,15 @@ export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
 
 /**
  * Adds token symbol to each day's price data.
- * @param {Object<string, Array<{timestamp: string, priceUsd: number}>>} priceData - Price data per token.
- * @returns {Object<string, Array<{timestamp: string, priceUsd: number, tokenSymbol: string}>>} Price data with symbols.
+ * @param {Object<string, Array<{
+ *   timestamp: string,
+ *   priceUsd: number
+ * }>>} priceData - Price data per token.
+ * @returns {Object<string, Array<{
+ *   timestamp: string,
+ *   priceUsd: number,
+ *   tokenSymbol: string
+ * }>>} Price data with symbols.
  */
 export function addSymbolToPriceData(priceData) {
   if (typeof priceData !== 'object' || priceData === null) {
@@ -562,15 +710,16 @@ export function addSymbolToPriceData(priceData) {
     return {};
   }
   const priceDataWithSymbol = {};
-  for (const [tokenName, dailyPriceData] of Object.entries(priceData)) {
+  Object.entries(priceData).forEach(([tokenName, dailyPriceData]) => {
     if (!Array.isArray(dailyPriceData)) {
       console.warn(`Price data for '${tokenName}' is not an array`);
-      continue;
+      return;
     }
     const tokenSymbol = tokenName.toUpperCase();
-    priceDataWithSymbol[tokenName] = dailyPriceData.map((priceDataForDay) => {
-      return { ...priceDataForDay, tokenSymbol };
-    });
-  }
+    priceDataWithSymbol[tokenName] = dailyPriceData.map((priceDataForDay) => ({
+      ...priceDataForDay,
+      tokenSymbol,
+    }));
+  });
   return priceDataWithSymbol;
 }

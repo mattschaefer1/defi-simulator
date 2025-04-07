@@ -8,17 +8,11 @@
     "import/extensions": ["error", "ignorePackages", {
       "js": "always"
     }],
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "no-console": "off",
     "operator-linebreak": ["error", "after", { "overrides": { "?": "before", ":": "before" } }],
     "multiline-ternary": ["error", "always-multiline"],
-    "indent": ["error", 2, {
-      "FunctionDeclaration": {"parameters": "first"},
-      "FunctionExpression": {"parameters": "first"},
-      "CallExpression": {"arguments": "first"},
-      "ArrayExpression": "first",
-      "ObjectExpression": "first",
-      "offsetTernaryExpressions": true
-    }]
+    "indent": "off",
+    "implicit-arrow-linebreak": "off",
+    "function-paren-newline": "off"
   }
 }

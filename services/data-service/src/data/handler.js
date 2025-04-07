@@ -1,13 +1,13 @@
 import {
   fetchPoolData,
   fetchPriceData,
-  fetchUniswapPoolData
-} from '../services/dataFetcher.js';
+  fetchUniswapPoolData,
+} from './fetcher.js';
 import {
   saveStakingData,
   saveTokenPriceData,
-  saveLiquidityPoolData
-} from '../savers/dataSaver.js';
+  saveLiquidityPoolData,
+} from './saver.js';
 import {
   trimData,
   removeDuplicateTimestamps,
@@ -17,8 +17,8 @@ import {
   addSymbolToPriceData,
   processPoolDataResponse,
   processPriceDataResponse,
-  processUniswapPoolDataResponse
-} from '../processors/dataProcessor.js';
+  processUniswapPoolDataResponse,
+} from './processor.js';
 
 /**
  * Fetches, processes, and saves data to the database for use in running simulations.
@@ -30,17 +30,21 @@ export default async function dataHandler(app) {
     const [apyTvlData, priceData, uniswapPoolsData] = await Promise.all([
       fetchPoolData(),
       fetchPriceData(),
-      fetchUniswapPoolData()
+      fetchUniswapPoolData(),
     ]);
 
-    const [processedApyData, processedTvlData] = processPoolDataResponse(apyTvlData);
+    const [processedApyData, processedTvlData] =
+      processPoolDataResponse(apyTvlData);
     const processedPriceData = processPriceDataResponse(priceData);
-    const processedUniswapPoolsData = processUniswapPoolDataResponse(uniswapPoolsData);
+    const processedUniswapPoolsData =
+      processUniswapPoolDataResponse(uniswapPoolsData);
 
     const cleanApyData = removeDuplicateTimestamps(processedApyData);
     const cleanTvlData = removeDuplicateTimestamps(processedTvlData);
     const cleanPriceData = removeDuplicateTimestamps(processedPriceData);
-    const cleanUniswapPoolsData = removeDuplicateTimestamps(processedUniswapPoolsData);
+    const cleanUniswapPoolsData = removeDuplicateTimestamps(
+      processedUniswapPoolsData,
+    );
 
     const trimmedApyData = trimData(cleanApyData);
     const trimmedTvlData = trimData(cleanTvlData);
@@ -52,31 +56,40 @@ export default async function dataHandler(app) {
     const missingPriceDates = findMissingDates(trimmedPriceData);
     const missingUniswapDates = findMissingDates(trimmedUniswapPoolsData);
 
-    const filledApyData = Object.keys(missingApyDates).length > 0
-      ? trimData(fillMissingDates(trimmedApyData, missingApyDates))
-      : trimmedApyData;
-    const filledTvlData = Object.keys(missingTvlDates).length > 0
-      ? trimData(fillMissingDates(trimmedTvlData, missingTvlDates))
-      : trimmedTvlData;
-    const filledPriceData = Object.keys(missingPriceDates).length > 0
-      ? trimData(fillMissingDates(trimmedPriceData, missingPriceDates))
-      : trimmedPriceData;
-    const filledUniswapPoolsData = Object.keys(missingUniswapDates).length > 0
-      ? trimData(fillMissingDates(trimmedUniswapPoolsData, missingUniswapDates))
-      : trimmedUniswapPoolsData;
+    const filledApyData =
+      Object.keys(missingApyDates).length > 0
+        ? trimData(fillMissingDates(trimmedApyData, missingApyDates))
+        : trimmedApyData;
+    const filledTvlData =
+      Object.keys(missingTvlDates).length > 0
+        ? trimData(fillMissingDates(trimmedTvlData, missingTvlDates))
+        : trimmedTvlData;
+    const filledPriceData =
+      Object.keys(missingPriceDates).length > 0
+        ? trimData(fillMissingDates(trimmedPriceData, missingPriceDates))
+        : trimmedPriceData;
+    const filledUniswapPoolsData =
+      Object.keys(missingUniswapDates).length > 0
+        ? trimData(
+            fillMissingDates(trimmedUniswapPoolsData, missingUniswapDates),
+          )
+        : trimmedUniswapPoolsData;
 
-    const liquidityPoolData = formatLiquidityPoolData(filledTvlData, filledUniswapPoolsData);
+    const liquidityPoolData = formatLiquidityPoolData(
+      filledTvlData,
+      filledUniswapPoolsData,
+    );
     const tokenPriceData = addSymbolToPriceData(filledPriceData);
 
-    await saveStakingData(filledApyData, app).catch(err => {
+    await saveStakingData(filledApyData, app).catch((err) => {
       console.error('Failed to save staking data:', err);
       throw err;
     });
-    await saveTokenPriceData(tokenPriceData, app).catch(err => {
+    await saveTokenPriceData(tokenPriceData, app).catch((err) => {
       console.error('Failed to save token price data:', err);
       throw err;
     });
-    await saveLiquidityPoolData(liquidityPoolData, app).catch(err => {
+    await saveLiquidityPoolData(liquidityPoolData, app).catch((err) => {
       console.error('Failed to save liquidity pool data:', err);
       throw err;
     });
