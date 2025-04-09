@@ -6,7 +6,7 @@ import { poolAddresses } from '../config/pools.js';
  *                               Unix timestamp (in milliseconds).
  * @returns {string|null} ISO date string (UTC), or null if the input is invalid.
  */
-function convertToISOString(date) {
+export function convertToISOString(date) {
   if (typeof date !== 'string' && typeof date !== 'number') {
     console.warn(`Invalid date input type: ${typeof date}, value: ${date}`);
     return null;
@@ -21,11 +21,13 @@ function convertToISOString(date) {
  * @param {number} numOfPlaces - Number of decimal places (non-negative integer).
  * @returns {number|null} Rounded number, or null if inputs are invalid.
  */
-function roundToDecimal(num, numOfPlaces) {
+export function roundToDecimal(num, numOfPlaces) {
   if (
     typeof num !== 'number' ||
     !Number.isInteger(numOfPlaces) ||
-    numOfPlaces < 0
+    numOfPlaces < 0 ||
+    Number.isNaN(num) ||
+    !Number.isFinite(num)
   ) {
     console.warn(
       `Invalid inputs for rounding: num=${num}, numOfPlaces=${numOfPlaces}`,
