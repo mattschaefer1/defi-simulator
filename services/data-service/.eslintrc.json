@@ -14,5 +14,13 @@
     "indent": "off",
     "implicit-arrow-linebreak": "off",
     "function-paren-newline": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["tests/**/*"],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
 }
