@@ -45,7 +45,7 @@ export function roundToDecimal(num, numOfPlaces) {
  * @returns {Array<Object>} Processed daily APY data with 'timestamp' (ISO string) and
  *                          'apyPercentage'.
  */
-function formatApyData(rawData) {
+export function formatApyData(rawData) {
   if (!Array.isArray(rawData)) {
     console.error('rawData is not an array');
     return [];
@@ -73,7 +73,7 @@ function formatApyData(rawData) {
  *                                  and 'tvlUsd' (number).
  * @returns {Array<Object>} Processed daily TVL data with 'timestamp' (ISO string) and 'tvlUsd'.
  */
-function formatTvlData(rawData) {
+export function formatTvlData(rawData) {
   if (!Array.isArray(rawData)) {
     console.error('rawData is not an array');
     return [];
@@ -103,7 +103,7 @@ function formatTvlData(rawData) {
  *                                         [timestamp (number), price (number)].
  * @returns {Array<Object>} Processed token price data with 'timestamp' (ISO string) and 'priceUsd'.
  */
-function formatPriceData(rawData) {
+export function formatPriceData(rawData) {
   if (!Array.isArray(rawData)) {
     console.error('rawData is not an array');
     return [];
@@ -135,7 +135,7 @@ function formatPriceData(rawData) {
  * @returns {Array<Object>} Processed daily pool data arranged from oldest to most recent with
  *                          'timestamp', 'feesUSD', 'volumeUSD'.
  */
-function formatUniswapPoolData(rawData) {
+export function formatUniswapPoolData(rawData) {
   if (!Array.isArray(rawData)) {
     console.error('rawData is not an array');
     return [];
@@ -359,7 +359,7 @@ export function findMissingDates(data) {
  * @param {number} numDays - Non-negative integer days to subtract.
  * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
  */
-function findDateBefore(date, numDays) {
+export function findDateBefore(date, numDays) {
   if (
     !(date instanceof Date) ||
     Number.isNaN(date.getTime()) ||
@@ -384,7 +384,7 @@ function findDateBefore(date, numDays) {
  * @param {number} numDays - Non-negative integer days to add.
  * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
  */
-function findDateAfter(date, numDays) {
+export function findDateAfter(date, numDays) {
   if (
     !(date instanceof Date) ||
     Number.isNaN(date.getTime()) ||
@@ -410,7 +410,7 @@ function findDateAfter(date, numDays) {
  * @param {number} [maxDays=7] - Maximum days to search (positive integer).
  * @returns {[string[], string[]]} Two arrays: dates before and after the missing date.
  */
-function findValidDates(missingDate, timestamps, maxDays = 7) {
+export function findValidDates(missingDate, timestamps, maxDays = 7) {
   if (
     !(missingDate instanceof Date) ||
     Number.isNaN(missingDate.getTime()) ||
@@ -450,7 +450,7 @@ function findValidDates(missingDate, timestamps, maxDays = 7) {
  *                                          key-value pairs.
  * @returns {Object<string, Array<number>>} Metrics object with arrays of values per metric.
  */
-function getMetrics(validDates, recordMap) {
+export function getMetrics(validDates, recordMap) {
   if (!Array.isArray(validDates) || !(recordMap instanceof Map)) {
     console.warn(
       `Invalid inputs: validDates=${validDates}, recordMap=${recordMap}`,
@@ -478,7 +478,7 @@ function getMetrics(validDates, recordMap) {
  * @param {Object<string, number[]>} metricsAfter - Metrics after the missing date.
  * @returns {Object<string, number>} Simulated metrics as integers.
  */
-function simulateMetrics(metricsBefore, metricsAfter) {
+export function simulateMetrics(metricsBefore, metricsAfter) {
   if (typeof metricsBefore !== 'object' || typeof metricsAfter !== 'object') {
     console.warn(
       `Invalid inputs: metricsBefore=${metricsBefore}, metricsAfter=${metricsAfter}`,
@@ -608,7 +608,7 @@ export function fillMissingDates(data, missingDates) {
  * @param {Object<string, Array<{timestamp: string}>>} uniswapPoolsData - Uniswap data per pool.
  * @returns {boolean} True if timestamps align, false otherwise.
  */
-function checkTimestampAlignment(tvlData, uniswapPoolsData) {
+export function checkTimestampAlignment(tvlData, uniswapPoolsData) {
   if (
     typeof tvlData !== 'object' ||
     typeof uniswapPoolsData !== 'object' ||
