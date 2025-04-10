@@ -41,58 +41,65 @@ export function roundToDecimal(num, numOfPlaces) {
 /**
  * Formats raw daily pool data from DeFi Llama.
  * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string)
- *                                  and 'apy' (number).
- * @returns {Array<Object>} Processed daily APY data with 'timestamp' (ISO string) and
- *                          'apyPercentage'.
+ *                                  and either 'apy' or 'tvlUsd' (number).
+ * @param {Object} options - Configuration options for formatting
+ * @param {string} options.valueField - The field name to extract from the data ('apy' or 'tvlUsd')
+ * @param {string} options.outputField - The field name to use in the output
+ *                                      ('apyPercentage' or 'tvlUsd')
+ * @param {number} options.decimalPlaces - Number of decimal places to round to
+ * @returns {Array<Object>} Processed daily data with 'timestamp' (ISO string) and the
+ *                          specified output field or an empty array if the input is invalid.
  */
-export function formatApyData(rawData) {
-  if (!Array.isArray(rawData)) {
-    console.error('rawData is not an array');
+export function formatPoolData(rawData, options) {
+  if (!options || typeof options !== 'object') {
+    console.warn('options parameter is missing or not an object');
     return [];
   }
-  return rawData
-    .filter(
-      (day) =>
-        day && typeof day.timestamp === 'string' && typeof day.apy === 'number',
-    )
-    .map((day) => {
-      const timestamp = convertToISOString(day.timestamp.substring(0, 10));
-      const apyPercentage = roundToDecimal(day.apy, 2);
-      if (timestamp === null || apyPercentage === null) {
-        console.warn(`Invalid APY data: ${JSON.stringify(day)}`);
-        return null;
-      }
-      return { timestamp, apyPercentage };
-    })
-    .filter((item) => item !== null);
-}
 
-/**
- * Formats raw daily pool data from DeFi Llama.
- * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string)
- *                                  and 'tvlUsd' (number).
- * @returns {Array<Object>} Processed daily TVL data with 'timestamp' (ISO string) and 'tvlUsd'.
- */
-export function formatTvlData(rawData) {
-  if (!Array.isArray(rawData)) {
-    console.error('rawData is not an array');
+  const { valueField, outputField, decimalPlaces } = options;
+
+  if (!valueField || typeof valueField !== 'string') {
+    console.warn('options.valueField is missing or not a string');
     return [];
   }
+
+  if (!outputField || typeof outputField !== 'string') {
+    console.warn('options.outputField is missing or not a string');
+    return [];
+  }
+
+  if (
+    !decimalPlaces ||
+    typeof decimalPlaces !== 'number' ||
+    !Number.isInteger(decimalPlaces) ||
+    decimalPlaces < 0
+  ) {
+    console.warn(
+      'options.decimalPlaces is missing, not an integer, or negative',
+    );
+    return [];
+  }
+
+  if (!Array.isArray(rawData)) {
+    console.warn('rawData is not an array');
+    return [];
+  }
+
   return rawData
     .filter(
       (day) =>
         day &&
         typeof day.timestamp === 'string' &&
-        typeof day.tvlUsd === 'number',
+        typeof day[valueField] === 'number',
     )
     .map((day) => {
       const timestamp = convertToISOString(day.timestamp.substring(0, 10));
-      const tvlUsd = roundToDecimal(day.tvlUsd, 6);
-      if (timestamp === null || tvlUsd === null) {
-        console.warn(`Invalid TVL data: ${JSON.stringify(day)}`);
+      const value = roundToDecimal(day[valueField], decimalPlaces);
+      if (timestamp === null || value === null) {
+        console.warn(`Invalid ${valueField} data: ${JSON.stringify(day)}`);
         return null;
       }
-      return { timestamp, tvlUsd };
+      return { timestamp, [outputField]: value };
     })
     .filter((item) => item !== null);
 }
@@ -178,9 +185,17 @@ export function processPoolDataResponse(apyTvlData) {
       return;
     }
     if (poolName === 'lidoEth') {
-      processedApyData[poolName] = formatApyData(data);
+      processedApyData[poolName] = formatPoolData(data, {
+        valueField: 'apy',
+        outputField: 'apyPercentage',
+        decimalPlaces: 2,
+      });
     } else {
-      processedTvlData[poolName] = formatTvlData(data);
+      processedTvlData[poolName] = formatPoolData(data, {
+        valueField: 'tvlUsd',
+        outputField: 'tvlUsd',
+        decimalPlaces: 6,
+      });
     }
   });
   return [processedApyData, processedTvlData];
