@@ -141,7 +141,8 @@ export function formatPriceData(rawData) {
  * @param {Array<Object>} rawData - Raw data array with objects containing 'date' (number),
  *                                  'feesUSD' (string), 'volumeUSD' (string).
  * @returns {Array<Object>} Processed daily pool data arranged from oldest to most recent with
- *                          'timestamp', 'feesUSD', 'volumeUSD'.
+ *                          'timestamp', 'feesUSD', 'volumeUSD' or an empty array if the input
+ *                          is invalid.
  */
 export function formatUniswapPoolData(rawData) {
   if (!Array.isArray(rawData)) {

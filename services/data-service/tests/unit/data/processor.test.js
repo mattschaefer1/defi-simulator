@@ -686,4 +686,370 @@ describe('Data Processing Functions', () => {
       ]);
     });
   });
+
+  describe('formatUniswapPoolData', () => {
+    it('should format Uniswap pool data correctly', () => {
+      const rawData = [
+        {
+          date: 1672617600,
+          feesUSD: '234.5678901',
+          volumeUSD: '23456.7890123',
+        },
+        {
+          date: 1672531200,
+          feesUSD: '123.4567890',
+          volumeUSD: '12345.6789012',
+        },
+      ];
+      const result = processor.formatUniswapPoolData(rawData);
+      expect(result).toEqual([
+        {
+          timestamp: '2023-01-01T00:00:00.000Z',
+          feesUSD: 123.456789,
+          volumeUSD: 12345.678901,
+        },
+        {
+          timestamp: '2023-01-02T00:00:00.000Z',
+          feesUSD: 234.56789,
+          volumeUSD: 23456.789012,
+        },
+      ]);
+    });
+
+    it('should return an empty array for non-array input', () => {
+      const result = processor.formatUniswapPoolData('not-an-array');
+      expect(result).toEqual([]);
+    });
+
+    it('should log an error if rawData is not an array', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      processor.formatUniswapPoolData('not-an-array');
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('rawData is not an array'),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should return an empty array for empty input', () => {
+      const result = processor.formatUniswapPoolData([]);
+      expect(result).toEqual([]);
+    });
+
+    it('should filter out objects with missing properties', () => {
+      const rawData = [
+        {
+          date: 1672876800,
+          feesUSD: '567.8901234',
+          volumeUSD: '56789.0123456',
+        },
+        { feesUSD: '456.7890123', volumeUSD: '45678.90123455' }, // Missing date
+        { date: 1672704000, volumeUSD: '34567.89012344' }, // Missing feesUSD
+        { date: 1672617600, feesUSD: '234.5678901' }, // Missing volumeUSD
+        {
+          date: 1672531200,
+          feesUSD: '123.4567890',
+          volumeUSD: '12345.6789012',
+        },
+      ];
+      const result = processor.formatUniswapPoolData(rawData);
+      expect(result).toEqual([
+        {
+          timestamp: '2023-01-01T00:00:00.000Z',
+          feesUSD: 123.456789,
+          volumeUSD: 12345.678901,
+        },
+        {
+          timestamp: '2023-01-05T00:00:00.000Z',
+          feesUSD: 567.890123,
+          volumeUSD: 56789.012346,
+        },
+      ]);
+    });
+
+    it('should filter out objects with wrong property types', () => {
+      const rawData = [
+        {
+          date: 1672876800,
+          feesUSD: '567.8901234',
+          volumeUSD: '56789.0123456',
+        },
+        { date: 1672790400, feesUSD: '456.7890123', volumeUSD: 45678.9012345 }, // volumeUSD as number
+        { date: 1672704000, feesUSD: 345.6789012, volumeUSD: '34567.8901234' }, // feesUSD as number
+        {
+          date: '1672617600',
+          feesUSD: '234.5678901',
+          volumeUSD: '23456.7890123',
+        }, // date as string
+        {
+          date: 1672531200,
+          feesUSD: '123.4567890',
+          volumeUSD: '12345.6789012',
+        },
+      ];
+      const result = processor.formatUniswapPoolData(rawData);
+      expect(result).toEqual([
+        {
+          timestamp: '2023-01-01T00:00:00.000Z',
+          feesUSD: 123.456789,
+          volumeUSD: 12345.678901,
+        },
+        {
+          timestamp: '2023-01-05T00:00:00.000Z',
+          feesUSD: 567.890123,
+          volumeUSD: 56789.012346,
+        },
+      ]);
+    });
+
+    it('should filter out objects with invalid date values', () => {
+      const rawData = [
+        {
+          date: 1672876800,
+          feesUSD: '567.8901234',
+          volumeUSD: '56789.0123456',
+        },
+        { date: -Infinity, feesUSD: '456.7890123', volumeUSD: '45678.9012345' },
+        { date: Infinity, feesUSD: '345.6789012', volumeUSD: '34567.8901234' },
+        { date: NaN, feesUSD: '234.5678901', volumeUSD: '23456.7890123' },
+        {
+          date: 1672531200,
+          feesUSD: '123.4567890',
+          volumeUSD: '12345.6789012',
+        },
+      ];
+      const result = processor.formatUniswapPoolData(rawData);
+      expect(result).toEqual([
+        {
+          timestamp: '2023-01-01T00:00:00.000Z',
+          feesUSD: 123.456789,
+          volumeUSD: 12345.678901,
+        },
+        {
+          timestamp: '2023-01-05T00:00:00.000Z',
+          feesUSD: 567.890123,
+          volumeUSD: 56789.012346,
+        },
+      ]);
+    });
+
+    it('should filter out objects with invalid feesUSD values', () => {
+      const rawData = [
+        {
+          date: 1672876800,
+          feesUSD: '567.8901234',
+          volumeUSD: '56789.0123456',
+        },
+        { date: 1672790400, feesUSD: 'Infinity', volumeUSD: '45678.9012345' },
+        { date: 1672704000, feesUSD: 'NaN', volumeUSD: '34567.8901234' },
+        {
+          date: 1672617600,
+          feesUSD: 'not-a-number',
+          volumeUSD: '23456.7890123',
+        },
+        {
+          date: 1672531200,
+          feesUSD: '123.4567890',
+          volumeUSD: '12345.6789012',
+        },
+      ];
+      const result = processor.formatUniswapPoolData(rawData);
+      expect(result).toEqual([
+        {
+          timestamp: '2023-01-01T00:00:00.000Z',
+          feesUSD: 123.456789,
+          volumeUSD: 12345.678901,
+        },
+        {
+          timestamp: '2023-01-05T00:00:00.000Z',
+          feesUSD: 567.890123,
+          volumeUSD: 56789.012346,
+        },
+      ]);
+    });
+
+    it('should filter out objects with invalid volumeUSD values', () => {
+      const rawData = [
+        {
+          date: 1672876800,
+          feesUSD: '567.8901234',
+          volumeUSD: '56789.0123456',
+        },
+        { date: 1672790400, feesUSD: '456.7890123', volumeUSD: 'Infinity' },
+        { date: 1672704000, feesUSD: '345.6789012', volumeUSD: 'NaN' },
+        { date: 1672617600, feesUSD: '234.5678901', volumeUSD: 'not-a-number' },
+        {
+          date: 1672531200,
+          feesUSD: '123.4567890',
+          volumeUSD: '12345.6789012',
+        },
+      ];
+      const result = processor.formatUniswapPoolData(rawData);
+      expect(result).toEqual([
+        {
+          timestamp: '2023-01-01T00:00:00.000Z',
+          feesUSD: 123.456789,
+          volumeUSD: 12345.678901,
+        },
+        {
+          timestamp: '2023-01-05T00:00:00.000Z',
+          feesUSD: 567.890123,
+          volumeUSD: 56789.012346,
+        },
+      ]);
+    });
+
+    it('should log warnings for invalid Uniswap pool data', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const rawData = [
+        {
+          date: 1672531200,
+          feesUSD: 'not-a-number',
+          volumeUSD: '12345.6789012',
+        },
+      ];
+
+      processor.formatUniswapPoolData(rawData);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid Uniswap pool data'),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle edge cases with feesUSD and volumeUSD values', () => {
+      const rawData = [
+        { date: 1672790400, feesUSD: '0.0000001', volumeUSD: '0.0000001' },
+        {
+          date: 1672704000,
+          feesUSD: '999999.9999999',
+          volumeUSD: '99999999.9999999',
+        },
+        {
+          date: 1672617600,
+          feesUSD: '-1.2345678',
+          volumeUSD: '-12345.6789012',
+        },
+        { date: 1672531200, feesUSD: '0', volumeUSD: '0' },
+      ];
+      const result = processor.formatUniswapPoolData(rawData);
+      expect(result).toEqual([
+        { timestamp: '2023-01-01T00:00:00.000Z', feesUSD: 0, volumeUSD: 0 },
+        {
+          timestamp: '2023-01-02T00:00:00.000Z',
+          feesUSD: -1.234568,
+          volumeUSD: -12345.678901,
+        },
+        {
+          timestamp: '2023-01-03T00:00:00.000Z',
+          feesUSD: 1000000,
+          volumeUSD: 100000000,
+        },
+        { timestamp: '2023-01-04T00:00:00.000Z', feesUSD: 0, volumeUSD: 0 },
+      ]);
+    });
+
+    it('should handle mixed valid and invalid data correctly', () => {
+      const rawData = [
+        {
+          date: 1672876800,
+          feesUSD: '567.8901234',
+          volumeUSD: '56789.0123456',
+        }, // Valid
+        { date: 1672790400, feesUSD: '456.7890123', volumeUSD: 'NaN' }, // Invalid volumeUSD
+        {
+          date: 1672704000,
+          feesUSD: 'not-a-number',
+          volumeUSD: '34567.890123',
+        }, // Invalid feesUSD
+        {
+          date: 'invalid-date',
+          feesUSD: '234.567890',
+          volumeUSD: '23456.789012',
+        }, // Invalid date
+        undefined, // Invalid
+        null, // Invalid
+        {
+          date: 1672531200,
+          feesUSD: '123.4567890',
+          volumeUSD: '12345.6789012',
+        }, // Valid
+      ];
+      const result = processor.formatUniswapPoolData(rawData);
+      expect(result).toEqual([
+        {
+          timestamp: '2023-01-01T00:00:00.000Z',
+          feesUSD: 123.456789,
+          volumeUSD: 12345.678901,
+        },
+        {
+          timestamp: '2023-01-05T00:00:00.000Z',
+          feesUSD: 567.890123,
+          volumeUSD: 56789.012346,
+        },
+      ]);
+    });
+
+    it('should reverse the order of the data (oldest to most recent)', () => {
+      const rawData = [
+        {
+          date: 1672876800,
+          feesUSD: '567.8901234',
+          volumeUSD: '56789.0123456',
+        }, // Jan 5
+        {
+          date: 1672790400,
+          feesUSD: '456.7890123',
+          volumeUSD: '45678.9012345',
+        }, // Jan 4
+        {
+          date: 1672704000,
+          feesUSD: '345.6789012',
+          volumeUSD: '34567.8901234',
+        }, // Jan 3
+        {
+          date: 1672617600,
+          feesUSD: '234.5678901',
+          volumeUSD: '23456.7890123',
+        }, // Jan 2
+        {
+          date: 1672531200,
+          feesUSD: '123.4567890',
+          volumeUSD: '12345.6789012',
+        }, // Jan 1
+      ];
+      const result = processor.formatUniswapPoolData(rawData);
+      expect(result).toEqual([
+        {
+          timestamp: '2023-01-01T00:00:00.000Z',
+          feesUSD: 123.456789,
+          volumeUSD: 12345.678901,
+        },
+        {
+          timestamp: '2023-01-02T00:00:00.000Z',
+          feesUSD: 234.56789,
+          volumeUSD: 23456.789012,
+        },
+        {
+          timestamp: '2023-01-03T00:00:00.000Z',
+          feesUSD: 345.678901,
+          volumeUSD: 34567.890123,
+        },
+        {
+          timestamp: '2023-01-04T00:00:00.000Z',
+          feesUSD: 456.789012,
+          volumeUSD: 45678.901235,
+        },
+        {
+          timestamp: '2023-01-05T00:00:00.000Z',
+          feesUSD: 567.890123,
+          volumeUSD: 56789.012346,
+        },
+      ]);
+    });
+  });
 });
