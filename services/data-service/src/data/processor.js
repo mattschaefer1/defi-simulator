@@ -108,11 +108,12 @@ export function formatPoolData(rawData, options) {
  * Formats raw daily token price data from CoinGecko.
  * @param {Array<Array<number>>} rawData - Raw price data array, each item is
  *                                         [timestamp (number), price (number)].
- * @returns {Array<Object>} Processed token price data with 'timestamp' (ISO string) and 'priceUsd'.
+ * @returns {Array<Object>} Processed token price data with 'timestamp' (ISO string) and 'priceUsd'
+ *                          or an empty array if the input is invalid.
  */
 export function formatPriceData(rawData) {
   if (!Array.isArray(rawData)) {
-    console.error('rawData is not an array');
+    console.warn('rawData is not an array');
     return [];
   }
   return rawData

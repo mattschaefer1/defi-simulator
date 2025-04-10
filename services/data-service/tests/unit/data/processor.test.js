@@ -527,4 +527,163 @@ describe('Data Processing Functions', () => {
       expect(result).toEqual([]);
     });
   });
+
+  describe('formatPriceData', () => {
+    it('should format price data correctly', () => {
+      const rawData = [
+        [1672531200000, 123456.7890123],
+        [1672617600000, 234567.8901234],
+      ];
+      const result = processor.formatPriceData(rawData);
+      expect(result).toEqual([
+        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 123456.789012 },
+        { timestamp: '2023-01-02T00:00:00.000Z', priceUsd: 234567.890123 },
+      ]);
+    });
+
+    it('should return an empty array for non-array input', () => {
+      const result = processor.formatPriceData('not-an-array');
+      expect(result).toEqual([]);
+    });
+
+    it('should log warnings if rawData is not an array', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      processor.formatPriceData('not-an-array');
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('rawData is not an array'),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should return an empty array for empty input', () => {
+      const result = processor.formatPriceData([]);
+      expect(result).toEqual([]);
+    });
+
+    it('should filter out non-array items', () => {
+      const rawData = [
+        [1672531200000, 123456.7890123],
+        'not-an-array',
+        123,
+        { timestamp: 1672531200000, price: 123456.7890123 },
+        [1672876800000, 234567.8901234],
+      ];
+      const result = processor.formatPriceData(rawData);
+      expect(result).toEqual([
+        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 123456.789012 },
+        { timestamp: '2023-01-05T00:00:00.000Z', priceUsd: 234567.890123 },
+      ]);
+    });
+
+    it('should filter out arrays with wrong length', () => {
+      const rawData = [
+        [1672531200000, 123456.7890123],
+        [1672617600000], // Missing price
+        [1672704000000, 345678.9012345, 456789.0123456], // Extra element
+        [1672790400000, 567890.1234567],
+      ];
+      const result = processor.formatPriceData(rawData);
+      expect(result).toEqual([
+        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 123456.789012 },
+        { timestamp: '2023-01-04T00:00:00.000Z', priceUsd: 567890.123457 },
+      ]);
+    });
+
+    it('should filter out arrays with wrong element types', () => {
+      const rawData = [
+        [1672531200000, 123456.7890123],
+        ['1672617600000', 234567.8901234], // timestamp as string
+        [1672704000000, '345678.9012345'], // price as string
+        [1672790400000, 567890.1234567],
+      ];
+      const result = processor.formatPriceData(rawData);
+      expect(result).toEqual([
+        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 123456.789012 },
+        { timestamp: '2023-01-04T00:00:00.000Z', priceUsd: 567890.123457 },
+      ]);
+    });
+
+    it('should filter out arrays with invalid timestamp values', () => {
+      const rawData = [
+        [1672531200000, 123456.7890123],
+        [NaN, 234567.8901234],
+        [Infinity, 345678.9012345],
+        [-Infinity, 456789.0123456],
+        [1672876800000, 567890.1234567],
+      ];
+      const result = processor.formatPriceData(rawData);
+      expect(result).toEqual([
+        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 123456.789012 },
+        { timestamp: '2023-01-05T00:00:00.000Z', priceUsd: 567890.123457 },
+      ]);
+    });
+
+    it('should filter out arrays with invalid price values', () => {
+      const rawData = [
+        [1672531200000, 123456.7890123],
+        [1672617600000, NaN],
+        [1672704000000, Infinity],
+        [1672790400000, -Infinity],
+        [1672876800000, 567890.1234567],
+      ];
+      const result = processor.formatPriceData(rawData);
+      expect(result).toEqual([
+        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 123456.789012 },
+        { timestamp: '2023-01-05T00:00:00.000Z', priceUsd: 567890.123457 },
+      ]);
+    });
+
+    it('should log warnings for invalid price data', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const rawData = [
+        [NaN, 123456.7890123],
+        [1672617600000, Infinity],
+      ];
+
+      processor.formatPriceData(rawData);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid price data'),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle edge cases with price values', () => {
+      const rawData = [
+        [1672531200000, 0],
+        [1672617600000, -1.2345678],
+        [1672704000000, 999999.9999999],
+        [1672790400000, 0.0000001],
+      ];
+      const result = processor.formatPriceData(rawData);
+      expect(result).toEqual([
+        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 0 },
+        { timestamp: '2023-01-02T00:00:00.000Z', priceUsd: -1.234568 },
+        { timestamp: '2023-01-03T00:00:00.000Z', priceUsd: 1000000 },
+        { timestamp: '2023-01-04T00:00:00.000Z', priceUsd: 0 },
+      ]);
+    });
+
+    it('should handle mixed valid and invalid data correctly', () => {
+      const rawData = [
+        [1672531200000, 123456.7890123], // Valid
+        'not-an-array', // Invalid
+        123, // Invalid
+        [NaN, 234567.8901234], // Invalid timestamp
+        [1672704000000, '345678.9012345'], // Invalid price type
+        [1672790400000, Infinity], // Invalid price value
+        [1672876800000, 567890.1234567], // Valid
+      ];
+      const result = processor.formatPriceData(rawData);
+      expect(result).toEqual([
+        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 123456.789012 },
+        { timestamp: '2023-01-05T00:00:00.000Z', priceUsd: 567890.123457 },
+      ]);
+    });
+  });
 });
