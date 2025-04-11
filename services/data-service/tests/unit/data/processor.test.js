@@ -1839,4 +1839,296 @@ describe('Data Processing Functions', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('removeDuplicateTimestamps', () => {
+    it('should remove duplicate timestamps and keep the last occurrence', () => {
+      const data = {
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 200 },
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 150 }, // Duplicate timestamp, should keep this one
+          { timestamp: '2023-01-03T00:00:00.000Z', value: 300 },
+        ],
+        pool2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 400 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 500 },
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 450 }, // Duplicate timestamp, should keep this one
+        ],
+      };
+
+      const result = processor.removeDuplicateTimestamps(data);
+
+      expect(result).toEqual({
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 150 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 200 },
+          { timestamp: '2023-01-03T00:00:00.000Z', value: 300 },
+        ],
+        pool2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 450 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 500 },
+        ],
+      });
+    });
+
+    it('should sort timestamps in ascending order', () => {
+      const data = {
+        pool1: [
+          { timestamp: '2023-01-03T00:00:00.000Z', value: 300 },
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 200 },
+        ],
+      };
+
+      const result = processor.removeDuplicateTimestamps(data);
+
+      expect(result).toEqual({
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 200 },
+          { timestamp: '2023-01-03T00:00:00.000Z', value: 300 },
+        ],
+      });
+    });
+
+    it('should handle empty input object', () => {
+      const data = {};
+      const result = processor.removeDuplicateTimestamps(data);
+      expect(result).toEqual({});
+    });
+
+    it('should handle non-array data for a key', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const data = {
+        pool1: 'not-an-array',
+        pool2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 400 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 500 },
+        ],
+      };
+
+      const result = processor.removeDuplicateTimestamps(data);
+
+      expect(result).toEqual({
+        pool1: [],
+        pool2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 400 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 500 },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Data for key 'pool1' is not an array",
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle multiple keys with non-array data', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const data = {
+        pool1: null,
+        pool2: undefined,
+        pool3: 123,
+        pool4: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 400 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 500 },
+        ],
+      };
+
+      const result = processor.removeDuplicateTimestamps(data);
+
+      expect(result).toEqual({
+        pool1: [],
+        pool2: [],
+        pool3: [],
+        pool4: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 400 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 500 },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledTimes(3);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Data for key 'pool1' is not an array",
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Data for key 'pool2' is not an array",
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Data for key 'pool3' is not an array",
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle empty arrays for keys', () => {
+      const data = {
+        pool1: [],
+        pool2: [],
+        pool3: [],
+      };
+
+      const result = processor.removeDuplicateTimestamps(data);
+
+      expect(result).toEqual({
+        pool1: [],
+        pool2: [],
+        pool3: [],
+      });
+    });
+
+    it('should handle invalid elements within arrays', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const data = {
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: 'invalid-date', value: 200 }, // Invalid ISO timestamp format
+          { timestamp: 1234567890, value: 300 }, // timestamp as number
+          { value: 400 }, // missing timestamp
+          null, // null element
+          undefined, // undefined element
+          { timestamp: '2023-01-03T00:00:00.000Z', value: 500 },
+        ],
+        pool2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 600 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 700 },
+        ],
+      };
+
+      const result = processor.removeDuplicateTimestamps(data);
+
+      expect(result).toEqual({
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: '2023-01-03T00:00:00.000Z', value: 500 },
+        ],
+        pool2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 600 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 700 },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledTimes(5);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Invalid ISO timestamp format in element for key 'pool1'",
+        ),
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Invalid or missing timestamp in element for key 'pool1'",
+        ),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle null or undefined input', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const result1 = processor.removeDuplicateTimestamps(null);
+      expect(result1).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid data: must be a non-null object',
+      );
+
+      const result2 = processor.removeDuplicateTimestamps(undefined);
+      expect(result2).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid data: must be a non-null object',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle non-object input', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const result1 = processor.removeDuplicateTimestamps('not-an-object');
+      expect(result1).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid data: must be a non-null object',
+      );
+
+      const result2 = processor.removeDuplicateTimestamps(123);
+      expect(result2).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid data: must be a non-null object',
+      );
+
+      const result3 = processor.removeDuplicateTimestamps(true);
+      expect(result3).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid data: must be a non-null object',
+      );
+
+      const result4 = processor.removeDuplicateTimestamps([]);
+      expect(result4).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid data: must be a non-null object',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle complex objects with multiple properties', () => {
+      const data = {
+        pool1: [
+          {
+            timestamp: '2023-01-01T00:00:00.000Z',
+            value: 100,
+            name: 'Item 1',
+            category: 'A',
+          },
+          {
+            timestamp: '2023-01-02T00:00:00.000Z',
+            value: 200,
+            name: 'Item 2',
+            category: 'B',
+          },
+          {
+            timestamp: '2023-01-01T00:00:00.000Z',
+            value: 150,
+            name: 'Item 3',
+            category: 'C',
+          }, // Duplicate timestamp
+          {
+            timestamp: '2023-01-03T00:00:00.000Z',
+            value: 300,
+            name: 'Item 4',
+            category: 'D',
+          },
+        ],
+      };
+
+      const result = processor.removeDuplicateTimestamps(data);
+
+      expect(result).toEqual({
+        pool1: [
+          {
+            timestamp: '2023-01-01T00:00:00.000Z',
+            value: 150,
+            name: 'Item 3',
+            category: 'C',
+          },
+          {
+            timestamp: '2023-01-02T00:00:00.000Z',
+            value: 200,
+            name: 'Item 2',
+            category: 'B',
+          },
+          {
+            timestamp: '2023-01-03T00:00:00.000Z',
+            value: 300,
+            name: 'Item 4',
+            category: 'D',
+          },
+        ],
+      });
+    });
+  });
 });

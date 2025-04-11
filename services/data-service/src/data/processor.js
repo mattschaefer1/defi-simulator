@@ -274,7 +274,7 @@ export function processUniswapPoolDataResponse(uniswapPoolsData) {
  *                                          empty object if input is invalid.
  */
 export function removeDuplicateTimestamps(data) {
-  if (typeof data !== 'object' || data === null) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
     console.error('Invalid data: must be a non-null object');
     return {};
   }
@@ -287,12 +287,18 @@ export function removeDuplicateTimestamps(data) {
     }
     const lastOccurrences = new Map();
     array.forEach((element) => {
-      if (
-        element &&
-        typeof element.timestamp === 'string' &&
-        !Number.isNaN(new Date(element.timestamp))
-      ) {
-        lastOccurrences.set(element.timestamp, element);
+      if (element && typeof element.timestamp === 'string') {
+        if (
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(
+            element.timestamp,
+          )
+        ) {
+          lastOccurrences.set(element.timestamp, element);
+        } else {
+          console.warn(
+            `Invalid ISO timestamp format in element for key '${key}': ${JSON.stringify(element)}`,
+          );
+        }
       } else {
         console.warn(
           `Invalid or missing timestamp in element for key '${key}': ${JSON.stringify(element)}`,
