@@ -2131,4 +2131,179 @@ describe('Data Processing Functions', () => {
       });
     });
   });
+
+  describe('trimData', () => {
+    it('should trim arrays to the specified maxLength, keeping the most recent entries', () => {
+      const data = {
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 200 },
+          { timestamp: '2023-01-03T00:00:00.000Z', value: 300 },
+          { timestamp: '2023-01-04T00:00:00.000Z', value: 400 },
+          { timestamp: '2023-01-05T00:00:00.000Z', value: 500 },
+        ],
+        pool2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 600 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 700 },
+        ],
+      };
+
+      const result = processor.trimData(data, 3);
+
+      expect(result).toEqual({
+        pool1: [
+          { timestamp: '2023-01-03T00:00:00.000Z', value: 300 },
+          { timestamp: '2023-01-04T00:00:00.000Z', value: 400 },
+          { timestamp: '2023-01-05T00:00:00.000Z', value: 500 },
+        ],
+        pool2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 600 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 700 },
+        ],
+      });
+    });
+
+    it('should use default maxLength of 365 when not specified', () => {
+      const data = {
+        pool1: Array.from({ length: 400 }, (_, i) => ({
+          timestamp: `2023-01-${(i % 30) + 1}T00:00:00.000Z`,
+          value: i,
+        })),
+      };
+
+      const result = processor.trimData(data);
+
+      expect(result.pool1.length).toBe(365);
+      expect(result.pool1[0].value).toBe(35); // First value should be the 35th element
+      expect(result.pool1[364].value).toBe(399); // Last value should be the 399th element
+    });
+
+    it('should return an empty object for null input', () => {
+      const result = processor.trimData(null);
+      expect(result).toEqual({});
+    });
+
+    it('should return an empty object for undefined input', () => {
+      const result = processor.trimData(undefined);
+      expect(result).toEqual({});
+    });
+
+    it('should return an empty object for array input', () => {
+      const result = processor.trimData([1, 2, 3]);
+      expect(result).toEqual({});
+    });
+
+    it('should return an empty object for primitive input', () => {
+      const result = processor.trimData('not an object');
+      expect(result).toEqual({});
+    });
+
+    it('should return the original data for invalid maxLength', () => {
+      const data = {
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 200 },
+        ],
+      };
+
+      const result = processor.trimData(data, -1);
+      expect(result).toEqual(data);
+    });
+
+    it('should return the original data for non-integer maxLength', () => {
+      const data = {
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 200 },
+        ],
+      };
+
+      const result = processor.trimData(data, 3.5);
+      expect(result).toEqual(data);
+    });
+
+    it('should set non-array values to empty arrays', () => {
+      const data = {
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 200 },
+        ],
+        pool2: 'not an array',
+        pool3: 123,
+        pool4: null,
+        pool5: undefined,
+        pool6: { key: 'value' },
+      };
+
+      const result = processor.trimData(data, 3);
+
+      expect(result).toEqual({
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', value: 100 },
+          { timestamp: '2023-01-02T00:00:00.000Z', value: 200 },
+        ],
+        pool2: [],
+        pool3: [],
+        pool4: [],
+        pool5: [],
+        pool6: [],
+      });
+    });
+
+    it('should handle empty arrays', () => {
+      const data = {
+        pool1: [],
+        pool2: [{ timestamp: '2023-01-01T00:00:00.000Z', value: 100 }],
+      };
+
+      const result = processor.trimData(data, 3);
+
+      expect(result).toEqual({
+        pool1: [],
+        pool2: [{ timestamp: '2023-01-01T00:00:00.000Z', value: 100 }],
+      });
+    });
+
+    it('should handle empty object', () => {
+      const data = {};
+      const result = processor.trimData(data, 3);
+      expect(result).toEqual({});
+    });
+
+    it('should log error for invalid data', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      processor.trimData(null);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid data: must be a non-null object',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should log error for invalid maxLength', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      processor.trimData({ pool1: [1, 2, 3] }, -1);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid maxLength: -1, must be a non-negative integer; returning original data',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should log warning for non-array values', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      processor.trimData({ pool1: 'not an array' }, 3);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Value for key 'pool1' is not an array; setting to empty array",
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
 });

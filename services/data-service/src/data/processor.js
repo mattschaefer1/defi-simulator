@@ -320,13 +320,13 @@ export function removeDuplicateTimestamps(data) {
  *                                          input is invalid.
  */
 export function trimData(data, maxLength = 365) {
-  if (typeof data !== 'object' || data === null) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
     console.error('Invalid data: must be a non-null object');
     return {};
   }
   if (!Number.isInteger(maxLength) || maxLength < 0) {
     console.error(
-      `Invalid maxLength: ${maxLength}, must be a non-negative integer`,
+      `Invalid maxLength: ${maxLength}, must be a non-negative integer; returning original data`,
     );
     return data;
   }
