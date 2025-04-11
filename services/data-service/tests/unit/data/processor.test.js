@@ -685,6 +685,42 @@ describe('Data Processing Functions', () => {
         { timestamp: '2023-01-05T00:00:00.000Z', priceUsd: 567890.123457 },
       ]);
     });
+
+    it('should handle invalid data within arrays', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const priceData = {
+        token1: [
+          [1672531200000, 1234.5678],
+          'not-an-array',
+          [1672704000000, 'not-a-number'],
+          [1672790400000, 3456.789],
+        ],
+        token2: [
+          [1672531200000, 45678.9012],
+          [1672617600000, 56789.0123],
+        ],
+      };
+
+      const result = processor.processPriceDataResponse(priceData);
+
+      expect(result).toEqual({
+        token1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 1234.5678 },
+          { timestamp: '2023-01-04T00:00:00.000Z', priceUsd: 3456.789 },
+        ],
+        token2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 45678.9012 },
+          { timestamp: '2023-01-02T00:00:00.000Z', priceUsd: 56789.0123 },
+        ],
+      });
+
+      // The formatPriceData function silently filters out invalid entries
+      // without logging warnings
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('formatUniswapPoolData', () => {
@@ -1316,6 +1352,206 @@ describe('Data Processing Functions', () => {
           { timestamp: '2023-01-02T00:00:00.000Z', tvlUsd: 234567.890123 },
         ],
       });
+    });
+  });
+
+  describe('processPriceDataResponse', () => {
+    it('should process price data correctly', () => {
+      const priceData = {
+        token1: [
+          [1672531200000, 1234.5678901],
+          [1672617600000, 2345.6789012],
+        ],
+        token2: [
+          [1672531200000, 45678.9012345],
+          [1672617600000, 56789.0123456],
+        ],
+      };
+
+      const result = processor.processPriceDataResponse(priceData);
+
+      expect(result).toEqual({
+        token1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 1234.56789 },
+          { timestamp: '2023-01-02T00:00:00.000Z', priceUsd: 2345.678901 },
+        ],
+        token2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 45678.901235 },
+          { timestamp: '2023-01-02T00:00:00.000Z', priceUsd: 56789.012346 },
+        ],
+      });
+    });
+
+    it('should handle empty input object', () => {
+      const priceData = {};
+      const result = processor.processPriceDataResponse(priceData);
+      expect(result).toEqual({});
+    });
+
+    it('should handle non-array data for a token', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const priceData = {
+        token1: 'not-an-array',
+        token2: [
+          [1672531200000, 45678.9012345],
+          [1672617600000, 56789.0123456],
+        ],
+      };
+
+      const result = processor.processPriceDataResponse(priceData);
+
+      expect(result).toEqual({
+        token1: [],
+        token2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 45678.901235 },
+          { timestamp: '2023-01-02T00:00:00.000Z', priceUsd: 56789.012346 },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for token token1 is not an array',
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle multiple tokens with non-array data', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const priceData = {
+        token1: null,
+        token2: undefined,
+        token3: 123,
+        token4: [
+          [1672531200000, 0.1234],
+          [1672617600000, 0.2345],
+        ],
+      };
+
+      const result = processor.processPriceDataResponse(priceData);
+
+      expect(result).toEqual({
+        token1: [],
+        token2: [],
+        token3: [],
+        token4: [
+          { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 0.1234 },
+          { timestamp: '2023-01-02T00:00:00.000Z', priceUsd: 0.2345 },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledTimes(3);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for token token1 is not an array',
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for token token2 is not an array',
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for token token3 is not an array',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle empty arrays for tokens', () => {
+      const priceData = {
+        token1: [],
+        token2: [],
+        token3: [],
+      };
+
+      const result = processor.processPriceDataResponse(priceData);
+
+      expect(result).toEqual({
+        token1: [],
+        token2: [],
+        token3: [],
+      });
+    });
+
+    it('should handle invalid data within arrays', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const priceData = {
+        token1: [
+          [1672531200000, 1234.5678],
+          'not-an-array',
+          [1672704000000, 'not-a-number'],
+          [1672790400000, 3456.789],
+        ],
+        token2: [
+          [1672531200000, 45678.9012],
+          [1672617600000, 56789.0123],
+        ],
+      };
+
+      const result = processor.processPriceDataResponse(priceData);
+
+      expect(result).toEqual({
+        token1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 1234.5678 },
+          { timestamp: '2023-01-04T00:00:00.000Z', priceUsd: 3456.789 },
+        ],
+        token2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 45678.9012 },
+          { timestamp: '2023-01-02T00:00:00.000Z', priceUsd: 56789.0123 },
+        ],
+      });
+
+      // The formatPriceData function silently filters out invalid entries
+      // without logging warnings
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle null or undefined input', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const result1 = processor.processPriceDataResponse(null);
+      expect(result1).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'priceData must be a non-null object',
+      );
+
+      const result2 = processor.processPriceDataResponse(undefined);
+      expect(result2).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'priceData must be a non-null object',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle non-object input', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const result1 = processor.processPriceDataResponse('not-an-object');
+      expect(result1).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'priceData must be a non-null object',
+      );
+
+      const result2 = processor.processPriceDataResponse(123);
+      expect(result2).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'priceData must be a non-null object',
+      );
+
+      const result3 = processor.processPriceDataResponse(true);
+      expect(result3).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'priceData must be a non-null object',
+      );
+
+      const result4 = processor.processPriceDataResponse([]);
+      expect(result4).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'priceData must be a non-null object',
+      );
+
+      consoleSpy.mockRestore();
     });
   });
 });

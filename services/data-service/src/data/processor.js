@@ -183,7 +183,11 @@ export function processPoolDataResponse(apyTvlData) {
   const processedApyData = {};
   const processedTvlData = {};
 
-  if (!apyTvlData || typeof apyTvlData !== 'object') {
+  if (
+    !apyTvlData ||
+    typeof apyTvlData !== 'object' ||
+    Array.isArray(apyTvlData)
+  ) {
     console.error('apyTvlData must be a non-null object');
     return [processedApyData, processedTvlData];
   }
@@ -216,8 +220,13 @@ export function processPoolDataResponse(apyTvlData) {
  *                                                           and values as arrays of
  *                                                           [timestamp, price] pairs.
  * @returns {Object<string, Array<Object>>} Token data with formatted price objects.
+ *                                          Empty object if the input is invalid.
  */
 export function processPriceDataResponse(priceData) {
+  if (!priceData || typeof priceData !== 'object' || Array.isArray(priceData)) {
+    console.error('priceData must be a non-null object');
+    return {};
+  }
   return Object.fromEntries(
     Object.entries(priceData).map(([tokenName, data]) => {
       if (!Array.isArray(data)) {
