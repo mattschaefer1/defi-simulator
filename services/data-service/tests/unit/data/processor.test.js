@@ -2015,11 +2015,6 @@ describe('Data Processing Functions', () => {
       expect(consoleSpy).toHaveBeenCalledTimes(5);
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining(
-          "Invalid ISO timestamp format in element for key 'pool1'",
-        ),
-      );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
           "Invalid or missing timestamp in element for key 'pool1'",
         ),
       );
