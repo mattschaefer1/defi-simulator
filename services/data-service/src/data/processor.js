@@ -176,11 +176,18 @@ export function formatUniswapPoolData(rawData) {
  * @param {Object<string, Array<Object>>} apyTvlData - Pool data with keys as pool names and values
  *                                                     as arrays of pool data objects.
  * @returns {Array<Object<string, Array<Object>>>} [APY data object, TVL data object] with
- *                                                 formatted pool data.
+ *                                                 formatted pool data. Pool data objects
+ *                                                 may be empty if the input is invalid.
  */
 export function processPoolDataResponse(apyTvlData) {
   const processedApyData = {};
   const processedTvlData = {};
+
+  if (!apyTvlData || typeof apyTvlData !== 'object') {
+    console.error('apyTvlData must be a non-null object');
+    return [processedApyData, processedTvlData];
+  }
+
   Object.entries(apyTvlData).forEach(([poolName, data]) => {
     if (!Array.isArray(data)) {
       console.error(`Data for pool ${poolName} is not an array`);

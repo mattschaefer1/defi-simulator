@@ -1052,4 +1052,270 @@ describe('Data Processing Functions', () => {
       ]);
     });
   });
+
+  describe('processPoolDataResponse', () => {
+    it('should process APY and TVL data correctly', () => {
+      const apyTvlData = {
+        lidoEth: [
+          { timestamp: '2023-01-01T10:00:00.000Z', apy: 1.23456 },
+          { timestamp: '2023-01-02T10:00:00.000Z', apy: 2.34567 },
+        ],
+        pool1: [
+          { timestamp: '2023-01-01T10:00:00.000Z', tvlUsd: 123456.7890123 },
+          { timestamp: '2023-01-02T10:00:00.000Z', tvlUsd: 234567.8901234 },
+        ],
+        pool2: [
+          { timestamp: '2023-01-01T10:00:00.000Z', tvlUsd: 345678.9012345 },
+          { timestamp: '2023-01-02T10:00:00.000Z', tvlUsd: 456789.0123456 },
+        ],
+      };
+
+      const [processedApyData, processedTvlData] =
+        processor.processPoolDataResponse(apyTvlData);
+
+      expect(processedApyData).toEqual({
+        lidoEth: [
+          { timestamp: '2023-01-01T00:00:00.000Z', apyPercentage: 1.23 },
+          { timestamp: '2023-01-02T00:00:00.000Z', apyPercentage: 2.35 },
+        ],
+      });
+
+      expect(processedTvlData).toEqual({
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', tvlUsd: 123456.789012 },
+          { timestamp: '2023-01-02T00:00:00.000Z', tvlUsd: 234567.890123 },
+        ],
+        pool2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', tvlUsd: 345678.901235 },
+          { timestamp: '2023-01-02T00:00:00.000Z', tvlUsd: 456789.012346 },
+        ],
+      });
+    });
+
+    it('should handle empty input object', () => {
+      const apyTvlData = {};
+      const [processedApyData, processedTvlData] =
+        processor.processPoolDataResponse(apyTvlData);
+
+      expect(processedApyData).toEqual({});
+      expect(processedTvlData).toEqual({});
+    });
+
+    it('should handle non-array data for a pool', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const apyTvlData = {
+        lidoEth: 'not-an-array',
+        pool1: [
+          { timestamp: '2023-01-01T10:00:00.000Z', tvlUsd: 123456.7890123 },
+        ],
+      };
+
+      const [processedApyData, processedTvlData] =
+        processor.processPoolDataResponse(apyTvlData);
+
+      expect(processedApyData).toEqual({});
+      expect(processedTvlData).toEqual({
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', tvlUsd: 123456.789012 },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for pool lidoEth is not an array',
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle multiple pools with non-array data', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const apyTvlData = {
+        lidoEth: 'not-an-array',
+        pool1: null,
+        pool2: undefined,
+        pool3: 123,
+        pool4: [
+          { timestamp: '2023-01-01T10:00:00.000Z', tvlUsd: 123456.7890123 },
+        ],
+      };
+
+      const [processedApyData, processedTvlData] =
+        processor.processPoolDataResponse(apyTvlData);
+
+      expect(processedApyData).toEqual({});
+      expect(processedTvlData).toEqual({
+        pool4: [
+          { timestamp: '2023-01-01T00:00:00.000Z', tvlUsd: 123456.789012 },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledTimes(4);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for pool lidoEth is not an array',
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for pool pool1 is not an array',
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for pool pool2 is not an array',
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for pool pool3 is not an array',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle empty arrays for pools', () => {
+      const apyTvlData = {
+        lidoEth: [],
+        pool1: [],
+        pool2: [],
+      };
+
+      const [processedApyData, processedTvlData] =
+        processor.processPoolDataResponse(apyTvlData);
+
+      expect(processedApyData).toEqual({
+        lidoEth: [],
+      });
+      expect(processedTvlData).toEqual({
+        pool1: [],
+        pool2: [],
+      });
+    });
+
+    it('should handle invalid data within arrays', () => {
+      const apyTvlData = {
+        lidoEth: [
+          { timestamp: '2023-01-01T10:00:00.000Z', apy: 1.23456 },
+          { timestamp: 'invalid-date', apy: 2.34567 },
+          { timestamp: '2023-01-03T10:00:00.000Z', apy: 'not-a-number' },
+          { timestamp: '2023-01-04T10:00:00.000Z', apy: 4.56789 },
+        ],
+        pool1: [
+          { timestamp: '2023-01-01T10:00:00.000Z', tvlUsd: 123456.7890123 },
+          { timestamp: 'invalid-date', tvlUsd: 234567.8901234 },
+          { timestamp: '2023-01-03T10:00:00.000Z', tvlUsd: 'not-a-number' },
+          { timestamp: '2023-01-04T10:00:00.000Z', tvlUsd: 456789.0123456 },
+        ],
+      };
+
+      const [processedApyData, processedTvlData] =
+        processor.processPoolDataResponse(apyTvlData);
+
+      expect(processedApyData).toEqual({
+        lidoEth: [
+          { timestamp: '2023-01-01T00:00:00.000Z', apyPercentage: 1.23 },
+          { timestamp: '2023-01-04T00:00:00.000Z', apyPercentage: 4.57 },
+        ],
+      });
+
+      expect(processedTvlData).toEqual({
+        pool1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', tvlUsd: 123456.789012 },
+          { timestamp: '2023-01-04T00:00:00.000Z', tvlUsd: 456789.012346 },
+        ],
+      });
+    });
+
+    it('should handle null or undefined input', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const [processedApyData1, processedTvlData1] =
+        processor.processPoolDataResponse(null);
+      expect(processedApyData1).toEqual({});
+      expect(processedTvlData1).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'apyTvlData must be a non-null object',
+      );
+
+      const [processedApyData2, processedTvlData2] =
+        processor.processPoolDataResponse(undefined);
+      expect(processedApyData2).toEqual({});
+      expect(processedTvlData2).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'apyTvlData must be a non-null object',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle non-object input', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const [processedApyData1, processedTvlData1] =
+        processor.processPoolDataResponse('not-an-object');
+      expect(processedApyData1).toEqual({});
+      expect(processedTvlData1).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'apyTvlData must be a non-null object',
+      );
+
+      const [processedApyData2, processedTvlData2] =
+        processor.processPoolDataResponse(123);
+      expect(processedApyData2).toEqual({});
+      expect(processedTvlData2).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'apyTvlData must be a non-null object',
+      );
+
+      const [processedApyData3, processedTvlData3] =
+        processor.processPoolDataResponse(true);
+      expect(processedApyData3).toEqual({});
+      expect(processedTvlData3).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'apyTvlData must be a non-null object',
+      );
+
+      const [processedApyData4, processedTvlData4] =
+        processor.processPoolDataResponse([]);
+      expect(processedApyData4).toEqual({});
+      expect(processedTvlData4).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'apyTvlData must be a non-null object',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle multiple lidoEth pools correctly', () => {
+      const apyTvlData = {
+        lidoEth: [
+          { timestamp: '2023-01-01T10:00:00.000Z', apy: 1.23456 },
+          { timestamp: '2023-01-02T10:00:00.000Z', apy: 2.34567 },
+        ],
+        lidoEthV2: [
+          { timestamp: '2023-01-01T10:00:00.000Z', tvlUsd: 3.45678 },
+          { timestamp: '2023-01-02T10:00:00.000Z', tvlUsd: 4.56789 },
+        ],
+        aaveUsdc: [
+          { timestamp: '2023-01-01T10:00:00.000Z', tvlUsd: 123456.7890123 },
+          { timestamp: '2023-01-02T10:00:00.000Z', tvlUsd: 234567.8901234 },
+        ],
+      };
+
+      const [processedApyData, processedTvlData] =
+        processor.processPoolDataResponse(apyTvlData);
+
+      expect(processedApyData).toEqual({
+        lidoEth: [
+          { timestamp: '2023-01-01T00:00:00.000Z', apyPercentage: 1.23 },
+          { timestamp: '2023-01-02T00:00:00.000Z', apyPercentage: 2.35 },
+        ],
+      });
+
+      expect(processedTvlData).toEqual({
+        lidoEthV2: [
+          { timestamp: '2023-01-01T00:00:00.000Z', tvlUsd: 3.45678 },
+          { timestamp: '2023-01-02T00:00:00.000Z', tvlUsd: 4.56789 },
+        ],
+        aaveUsdc: [
+          { timestamp: '2023-01-01T00:00:00.000Z', tvlUsd: 123456.789012 },
+          { timestamp: '2023-01-02T00:00:00.000Z', tvlUsd: 234567.890123 },
+        ],
+      });
+    });
+  });
 });
