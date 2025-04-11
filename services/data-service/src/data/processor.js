@@ -485,7 +485,7 @@ export function findValidDates(missingDate, timestamps, maxDays = 7) {
       if (afterDay && timestampSet.has(afterDay)) afterDates.push(afterDay);
     }
   }
-  return [beforeDates.slice(0, 2), afterDates.slice(0, 2)];
+  return [beforeDates, afterDates];
 }
 
 /**

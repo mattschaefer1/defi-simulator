@@ -2756,4 +2756,307 @@ describe('Data Processing Functions', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('findValidDates', () => {
+    it('should find valid dates before and after a missing date', () => {
+      const missingDate = new Date('2023-01-05T00:00:00.000Z');
+      const timestamps = [
+        '2023-01-01T00:00:00.000Z',
+        '2023-01-02T00:00:00.000Z',
+        '2023-01-07T00:00:00.000Z',
+        '2023-01-08T00:00:00.000Z',
+        '2023-01-10T00:00:00.000Z',
+      ];
+
+      const [beforeDates, afterDates] = processor.findValidDates(
+        missingDate,
+        timestamps,
+      );
+
+      expect(beforeDates).toEqual([
+        '2023-01-02T00:00:00.000Z',
+        '2023-01-01T00:00:00.000Z',
+      ]);
+      expect(afterDates).toEqual([
+        '2023-01-07T00:00:00.000Z',
+        '2023-01-08T00:00:00.000Z',
+      ]);
+    });
+
+    it('should find up to two valid dates before and after a missing date', () => {
+      const missingDate = new Date('2023-01-05T00:00:00.000Z');
+      const timestamps = [
+        '2023-01-03T00:00:00.000Z',
+        '2023-01-04T00:00:00.000Z',
+        '2023-01-06T00:00:00.000Z',
+        '2023-01-07T00:00:00.000Z',
+      ];
+
+      const [beforeDates, afterDates] = processor.findValidDates(
+        missingDate,
+        timestamps,
+      );
+
+      expect(beforeDates).toEqual([
+        '2023-01-04T00:00:00.000Z',
+        '2023-01-03T00:00:00.000Z',
+      ]);
+      expect(afterDates).toEqual([
+        '2023-01-06T00:00:00.000Z',
+        '2023-01-07T00:00:00.000Z',
+      ]);
+    });
+
+    it('should respect the maxDays parameter', () => {
+      const missingDate = new Date('2023-01-05T00:00:00.000Z');
+      const timestamps = [
+        '2023-01-02T00:00:00.000Z',
+        '2023-01-03T00:00:00.000Z',
+        '2023-01-07T00:00:00.000Z',
+        '2023-01-08T00:00:00.000Z',
+      ];
+
+      const [beforeDates, afterDates] = processor.findValidDates(
+        missingDate,
+        timestamps,
+        2,
+      );
+
+      expect(beforeDates).toEqual(['2023-01-03T00:00:00.000Z']);
+      expect(afterDates).toEqual(['2023-01-07T00:00:00.000Z']);
+    });
+
+    it('should handle dates across month boundaries', () => {
+      const missingDate = new Date('2023-02-02T00:00:00.000Z');
+      const timestamps = [
+        '2023-01-31T00:00:00.000Z',
+        '2023-02-01T00:00:00.000Z',
+        '2023-02-03T00:00:00.000Z',
+        '2023-02-04T00:00:00.000Z',
+      ];
+
+      const [beforeDates, afterDates] = processor.findValidDates(
+        missingDate,
+        timestamps,
+      );
+
+      expect(beforeDates).toEqual([
+        '2023-02-01T00:00:00.000Z',
+        '2023-01-31T00:00:00.000Z',
+      ]);
+      expect(afterDates).toEqual([
+        '2023-02-03T00:00:00.000Z',
+        '2023-02-04T00:00:00.000Z',
+      ]);
+    });
+
+    it('should handle dates across year boundaries', () => {
+      const missingDate = new Date('2024-01-02T00:00:00.000Z');
+      const timestamps = [
+        '2023-12-31T00:00:00.000Z',
+        '2024-01-01T00:00:00.000Z',
+        '2024-01-03T00:00:00.000Z',
+        '2024-01-04T00:00:00.000Z',
+      ];
+
+      const [beforeDates, afterDates] = processor.findValidDates(
+        missingDate,
+        timestamps,
+      );
+
+      expect(beforeDates).toEqual([
+        '2024-01-01T00:00:00.000Z',
+        '2023-12-31T00:00:00.000Z',
+      ]);
+      expect(afterDates).toEqual([
+        '2024-01-03T00:00:00.000Z',
+        '2024-01-04T00:00:00.000Z',
+      ]);
+    });
+
+    it('should not handle dates with different times', () => {
+      const missingDate = new Date('2023-01-05T12:00:00.000Z');
+      const timestamps = [
+        '2023-01-03T15:30:45.123Z',
+        '2023-01-04T10:20:30.456Z',
+        '2023-01-06T08:15:22.789Z',
+        '2023-01-07T23:45:10.321Z',
+      ];
+
+      const [beforeDates, afterDates] = processor.findValidDates(
+        missingDate,
+        timestamps,
+      );
+
+      expect(beforeDates).toEqual([]);
+      expect(afterDates).toEqual([]);
+    });
+
+    it('should return empty arrays when no valid dates are found', () => {
+      const missingDate = new Date('2023-01-05T00:00:00.000Z');
+      const timestamps = [
+        '2023-01-10T00:00:00.000Z',
+        '2023-01-11T00:00:00.000Z',
+        '2023-01-12T00:00:00.000Z',
+      ];
+
+      const [beforeDates, afterDates] = processor.findValidDates(
+        missingDate,
+        timestamps,
+        3,
+      );
+
+      expect(beforeDates).toEqual([]);
+      expect(afterDates).toEqual([]);
+    });
+
+    it('should return empty arrays for invalid missingDate', () => {
+      const timestamps = [
+        '2023-01-01T00:00:00.000Z',
+        '2023-01-02T00:00:00.000Z',
+        '2023-01-07T00:00:00.000Z',
+        '2023-01-08T00:00:00.000Z',
+      ];
+
+      const [beforeDates1, afterDates1] = processor.findValidDates(
+        'not a date',
+        timestamps,
+      );
+      expect(beforeDates1).toEqual([]);
+      expect(afterDates1).toEqual([]);
+
+      const [beforeDates2, afterDates2] = processor.findValidDates(
+        new Date('invalid date'),
+        timestamps,
+      );
+      expect(beforeDates2).toEqual([]);
+      expect(afterDates2).toEqual([]);
+
+      const [beforeDates3, afterDates3] = processor.findValidDates(
+        null,
+        timestamps,
+      );
+      expect(beforeDates3).toEqual([]);
+      expect(afterDates3).toEqual([]);
+
+      const [beforeDates4, afterDates4] = processor.findValidDates(
+        undefined,
+        timestamps,
+      );
+      expect(beforeDates4).toEqual([]);
+      expect(afterDates4).toEqual([]);
+    });
+
+    it('should return empty arrays for invalid timestamps', () => {
+      const missingDate = new Date('2023-01-05T00:00:00.000Z');
+
+      const [beforeDates1, afterDates1] = processor.findValidDates(
+        missingDate,
+        'not an array',
+      );
+      expect(beforeDates1).toEqual([]);
+      expect(afterDates1).toEqual([]);
+
+      const [beforeDates2, afterDates2] = processor.findValidDates(
+        missingDate,
+        null,
+      );
+      expect(beforeDates2).toEqual([]);
+      expect(afterDates2).toEqual([]);
+
+      const [beforeDates3, afterDates3] = processor.findValidDates(
+        missingDate,
+        undefined,
+      );
+      expect(beforeDates3).toEqual([]);
+      expect(afterDates3).toEqual([]);
+    });
+
+    it('should return empty arrays for invalid maxDays', () => {
+      const missingDate = new Date('2023-01-05T00:00:00.000Z');
+      const timestamps = [
+        '2023-01-01T00:00:00.000Z',
+        '2023-01-02T00:00:00.000Z',
+        '2023-01-07T00:00:00.000Z',
+        '2023-01-08T00:00:00.000Z',
+      ];
+
+      const [beforeDates1, afterDates1] = processor.findValidDates(
+        missingDate,
+        timestamps,
+        0,
+      );
+      expect(beforeDates1).toEqual([]);
+      expect(afterDates1).toEqual([]);
+
+      const [beforeDates2, afterDates2] = processor.findValidDates(
+        missingDate,
+        timestamps,
+        -1,
+      );
+      expect(beforeDates2).toEqual([]);
+      expect(afterDates2).toEqual([]);
+
+      const [beforeDates3, afterDates3] = processor.findValidDates(
+        missingDate,
+        timestamps,
+        5.5,
+      );
+      expect(beforeDates3).toEqual([]);
+      expect(afterDates3).toEqual([]);
+
+      const [beforeDates4, afterDates4] = processor.findValidDates(
+        missingDate,
+        timestamps,
+        '7',
+      );
+      expect(beforeDates4).toEqual([]);
+      expect(afterDates4).toEqual([]);
+    });
+
+    it('should log warning for invalid inputs', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      processor.findValidDates('not a date', 'not an array', 'invalid');
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Invalid inputs: missingDate=not a date, timestamps=not an array, maxDays=invalid',
+        ),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle empty timestamps array', () => {
+      const missingDate = new Date('2023-01-05T00:00:00.000Z');
+      const timestamps = [];
+
+      const [beforeDates, afterDates] = processor.findValidDates(
+        missingDate,
+        timestamps,
+      );
+
+      expect(beforeDates).toEqual([]);
+      expect(afterDates).toEqual([]);
+    });
+
+    it('should handle timestamps with invalid ISO format', () => {
+      const missingDate = new Date('2023-01-05T00:00:00.000Z');
+      const timestamps = [
+        '2023-01-02', // Missing time part
+        'invalid-date',
+        '2023-01-08T00:00:00.000Z',
+      ];
+
+      const [beforeDates, afterDates] = processor.findValidDates(
+        missingDate,
+        timestamps,
+      );
+
+      // Only the valid ISO timestamp should be found
+      expect(beforeDates).toEqual([]);
+      expect(afterDates).toEqual(['2023-01-08T00:00:00.000Z']);
+    });
+  });
 });
