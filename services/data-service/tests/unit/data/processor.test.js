@@ -2555,4 +2555,205 @@ describe('Data Processing Functions', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('findDateOffset', () => {
+    it('should calculate a date a specified number of days after the given date', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateOffset(date, 5);
+      expect(result).toBe('2023-01-06T00:00:00.000Z');
+    });
+
+    it('should calculate a date a specified number of days before the given date', () => {
+      const date = new Date('2023-01-10T00:00:00.000Z');
+      const result = processor.findDateOffset(date, -3);
+      expect(result).toBe('2023-01-07T00:00:00.000Z');
+    });
+
+    it('should handle zero days offset', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateOffset(date, 0);
+      expect(result).toBe('2023-01-01T00:00:00.000Z');
+    });
+
+    it('should handle dates across month boundaries', () => {
+      const date = new Date('2023-01-30T00:00:00.000Z');
+      const result = processor.findDateOffset(date, 5);
+      expect(result).toBe('2023-02-04T00:00:00.000Z');
+    });
+
+    it('should handle dates across year boundaries', () => {
+      const date = new Date('2023-12-30T00:00:00.000Z');
+      const result = processor.findDateOffset(date, 5);
+      expect(result).toBe('2024-01-04T00:00:00.000Z');
+    });
+
+    it('should handle dates with different times', () => {
+      const date = new Date('2023-01-01T15:30:45.123Z');
+      const result = processor.findDateOffset(date, 3);
+      expect(result).toBe('2023-01-04T00:00:00.000Z');
+    });
+
+    it('should return null for invalid date', () => {
+      const result = processor.findDateOffset('not a date', 5);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for NaN date', () => {
+      const date = new Date('invalid date');
+      const result = processor.findDateOffset(date, 5);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for non-integer numDays', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateOffset(date, 5.5);
+      expect(result).toBeNull();
+    });
+
+    it('should log warning for invalid inputs', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      processor.findDateOffset('not a date', 5);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid inputs: date=not a date, numDays=5'),
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('findDateBefore', () => {
+    it('should calculate a date a specified number of days before the given date', () => {
+      const date = new Date('2023-01-10T00:00:00.000Z');
+      const result = processor.findDateBefore(date, 3);
+      expect(result).toBe('2023-01-07T00:00:00.000Z');
+    });
+
+    it('should handle zero days', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateBefore(date, 0);
+      expect(result).toBe('2023-01-01T00:00:00.000Z');
+    });
+
+    it('should handle dates across month boundaries', () => {
+      const date = new Date('2023-02-02T00:00:00.000Z');
+      const result = processor.findDateBefore(date, 5);
+      expect(result).toBe('2023-01-28T00:00:00.000Z');
+    });
+
+    it('should handle dates across year boundaries', () => {
+      const date = new Date('2024-01-02T00:00:00.000Z');
+      const result = processor.findDateBefore(date, 5);
+      expect(result).toBe('2023-12-28T00:00:00.000Z');
+    });
+
+    it('should handle dates with different times', () => {
+      const date = new Date('2023-01-10T15:30:45.123Z');
+      const result = processor.findDateBefore(date, 3);
+      expect(result).toBe('2023-01-07T00:00:00.000Z');
+    });
+
+    it('should return null for negative numDays', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateBefore(date, -3);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for invalid date', () => {
+      const result = processor.findDateBefore('not a date', 5);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for NaN date', () => {
+      const date = new Date('invalid date');
+      const result = processor.findDateBefore(date, 5);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for non-integer numDays', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateBefore(date, 5.5);
+      expect(result).toBeNull();
+    });
+
+    it('should log warning for negative numDays', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      processor.findDateBefore(new Date('2023-01-01T00:00:00.000Z'), -3);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid numDays: -3, must be non-negative',
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('findDateAfter', () => {
+    it('should calculate a date a specified number of days after the given date', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateAfter(date, 5);
+      expect(result).toBe('2023-01-06T00:00:00.000Z');
+    });
+
+    it('should handle zero days', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateAfter(date, 0);
+      expect(result).toBe('2023-01-01T00:00:00.000Z');
+    });
+
+    it('should handle dates across month boundaries', () => {
+      const date = new Date('2023-01-30T00:00:00.000Z');
+      const result = processor.findDateAfter(date, 5);
+      expect(result).toBe('2023-02-04T00:00:00.000Z');
+    });
+
+    it('should handle dates across year boundaries', () => {
+      const date = new Date('2023-12-30T00:00:00.000Z');
+      const result = processor.findDateAfter(date, 5);
+      expect(result).toBe('2024-01-04T00:00:00.000Z');
+    });
+
+    it('should handle dates with different times', () => {
+      const date = new Date('2023-01-01T15:30:45.123Z');
+      const result = processor.findDateAfter(date, 3);
+      expect(result).toBe('2023-01-04T00:00:00.000Z');
+    });
+
+    it('should return null for negative numDays', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateAfter(date, -3);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for invalid date', () => {
+      const result = processor.findDateAfter('not a date', 5);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for NaN date', () => {
+      const date = new Date('invalid date');
+      const result = processor.findDateAfter(date, 5);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for non-integer numDays', () => {
+      const date = new Date('2023-01-01T00:00:00.000Z');
+      const result = processor.findDateAfter(date, 5.5);
+      expect(result).toBeNull();
+    });
+
+    it('should log warning for negative numDays', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      processor.findDateAfter(new Date('2023-01-01T00:00:00.000Z'), -3);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Invalid numDays: -3, must be non-negative',
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
 });
