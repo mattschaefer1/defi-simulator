@@ -344,10 +344,11 @@ export function trimData(data, maxLength = 365) {
  * @param {Object<string, Array<{timestamp: string}>>} data - Object with arrays of objects
  *                                                            containing 'timestamp' strings.
  * @returns {Object<string, Array<string>>} Object mapping keys to arrays of missing date
- *                                          ISO strings.
+ *                                          ISO strings. Empty object if input is invalid or
+ *                                          does not contain any missing dates.
  */
 export function findMissingDates(data) {
-  if (typeof data !== 'object' || data === null) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
     console.error('Invalid data: must be a non-null object');
     return {};
   }
@@ -362,7 +363,7 @@ export function findMissingDates(data) {
         if (
           r &&
           typeof r.timestamp === 'string' &&
-          !Number.isNaN(new Date(r.timestamp))
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r.timestamp)
         ) {
           const d = new Date(r.timestamp);
           return new Date(
