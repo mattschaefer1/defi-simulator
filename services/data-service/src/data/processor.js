@@ -397,42 +397,16 @@ export function findMissingDates(data) {
 }
 
 /**
- * Calculates a date a specified number of days before the given date.
+ * Calculates a date a specified number of days before or after the given date.
  * @param {Date} date - Starting date.
- * @param {number} numDays - Non-negative integer days to subtract.
+ * @param {number} numDays - Integer days to offset (positive for after, negative for before).
  * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
  */
-export function findDateBefore(date, numDays) {
+export function findDateOffset(date, numDays) {
   if (
     !(date instanceof Date) ||
     Number.isNaN(date.getTime()) ||
-    !Number.isInteger(numDays) ||
-    numDays < 0
-  ) {
-    console.warn(`Invalid inputs: date=${date}, numDays=${numDays}`);
-    return null;
-  }
-  return new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate() - numDays,
-    ),
-  ).toISOString();
-}
-
-/**
- * Calculates a date a specified number of days after the given date.
- * @param {Date} date - Starting date.
- * @param {number} numDays - Non-negative integer days to add.
- * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
- */
-export function findDateAfter(date, numDays) {
-  if (
-    !(date instanceof Date) ||
-    Number.isNaN(date.getTime()) ||
-    !Number.isInteger(numDays) ||
-    numDays < 0
+    !Number.isInteger(numDays)
   ) {
     console.warn(`Invalid inputs: date=${date}, numDays=${numDays}`);
     return null;
@@ -444,6 +418,34 @@ export function findDateAfter(date, numDays) {
       date.getUTCDate() + numDays,
     ),
   ).toISOString();
+}
+
+/**
+ * Calculates a date a specified number of days before the given date.
+ * @param {Date} date - Starting date.
+ * @param {number} numDays - Non-negative integer days to subtract.
+ * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
+ */
+export function findDateBefore(date, numDays) {
+  if (numDays < 0) {
+    console.warn(`Invalid numDays: ${numDays}, must be non-negative`);
+    return null;
+  }
+  return findDateOffset(date, -numDays);
+}
+
+/**
+ * Calculates a date a specified number of days after the given date.
+ * @param {Date} date - Starting date.
+ * @param {number} numDays - Non-negative integer days to add.
+ * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
+ */
+export function findDateAfter(date, numDays) {
+  if (numDays < 0) {
+    console.warn(`Invalid numDays: ${numDays}, must be non-negative`);
+    return null;
+  }
+  return findDateOffset(date, numDays);
 }
 
 /**
