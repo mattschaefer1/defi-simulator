@@ -243,8 +243,17 @@ export function processPriceDataResponse(priceData) {
  * @param {Object<string, Array<Object>>} uniswapPoolsData - Pool data with keys as pool names and
  *                                                           values as arrays of pool data objects.
  * @returns {Object<string, Array<Object>>} Pool data with formatted objects.
+ *                                          Empty object if the input is invalid.
  */
 export function processUniswapPoolDataResponse(uniswapPoolsData) {
+  if (
+    !uniswapPoolsData ||
+    typeof uniswapPoolsData !== 'object' ||
+    Array.isArray(uniswapPoolsData)
+  ) {
+    console.error('uniswapPoolsData must be a non-null object');
+    return {};
+  }
   return Object.fromEntries(
     Object.entries(uniswapPoolsData).map(([poolName, data]) => {
       if (!Array.isArray(data)) {

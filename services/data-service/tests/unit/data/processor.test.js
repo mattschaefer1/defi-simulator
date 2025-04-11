@@ -671,18 +671,18 @@ describe('Data Processing Functions', () => {
 
     it('should handle mixed valid and invalid data correctly', () => {
       const rawData = [
-        [1672531200000, 123456.7890123], // Valid
-        'not-an-array', // Invalid
-        123, // Invalid
-        [NaN, 234567.8901234], // Invalid timestamp
-        [1672704000000, '345678.9012345'], // Invalid price type
-        [1672790400000, Infinity], // Invalid price value
-        [1672876800000, 567890.1234567], // Valid
+        [1672531200000, 1234.5678901],
+        'not-an-array',
+        123,
+        [NaN, 2345.6789012],
+        [1672704000000, '3456.7890123'],
+        [1672790400000, Infinity],
+        [1672876800000, 56789.0123456],
       ];
       const result = processor.formatPriceData(rawData);
       expect(result).toEqual([
-        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 123456.789012 },
-        { timestamp: '2023-01-05T00:00:00.000Z', priceUsd: 567890.123457 },
+        { timestamp: '2023-01-01T00:00:00.000Z', priceUsd: 1234.56789 },
+        { timestamp: '2023-01-05T00:00:00.000Z', priceUsd: 56789.012346 },
       ]);
     });
 
@@ -1549,6 +1549,291 @@ describe('Data Processing Functions', () => {
       expect(result4).toEqual({});
       expect(consoleSpy).toHaveBeenCalledWith(
         'priceData must be a non-null object',
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('processUniswapPoolDataResponse', () => {
+    it('should process Uniswap pool data correctly', () => {
+      const uniswapPoolsData = {
+        pool1: [
+          {
+            date: 1672531200,
+            feesUSD: '123.456789',
+            volumeUSD: '12345.678901',
+          },
+          {
+            date: 1672617600,
+            feesUSD: '234.567890',
+            volumeUSD: '23456.789012',
+          },
+        ],
+        pool2: [
+          {
+            date: 1672531200,
+            feesUSD: '345.678901',
+            volumeUSD: '34567.890123',
+          },
+          {
+            date: 1672617600,
+            feesUSD: '456.789012',
+            volumeUSD: '45678.901234',
+          },
+        ],
+      };
+
+      const result = processor.processUniswapPoolDataResponse(uniswapPoolsData);
+
+      expect(result).toEqual({
+        pool1: [
+          {
+            timestamp: '2023-01-02T00:00:00.000Z',
+            feesUSD: 234.56789,
+            volumeUSD: 23456.789012,
+          },
+          {
+            timestamp: '2023-01-01T00:00:00.000Z',
+            feesUSD: 123.456789,
+            volumeUSD: 12345.678901,
+          },
+        ],
+        pool2: [
+          {
+            timestamp: '2023-01-02T00:00:00.000Z',
+            feesUSD: 456.789012,
+            volumeUSD: 45678.901234,
+          },
+          {
+            timestamp: '2023-01-01T00:00:00.000Z',
+            feesUSD: 345.678901,
+            volumeUSD: 34567.890123,
+          },
+        ],
+      });
+    });
+
+    it('should handle empty input object', () => {
+      const uniswapPoolsData = {};
+      const result = processor.processUniswapPoolDataResponse(uniswapPoolsData);
+      expect(result).toEqual({});
+    });
+
+    it('should handle non-array data for a pool', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const uniswapPoolsData = {
+        pool1: 'not-an-array',
+        pool2: [
+          {
+            date: 1672531200,
+            feesUSD: '345.678901',
+            volumeUSD: '34567.890123',
+          },
+        ],
+      };
+
+      const result = processor.processUniswapPoolDataResponse(uniswapPoolsData);
+
+      expect(result).toEqual({
+        pool1: [],
+        pool2: [
+          {
+            timestamp: '2023-01-01T00:00:00.000Z',
+            feesUSD: 345.678901,
+            volumeUSD: 34567.890123,
+          },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for Uniswap pool pool1 is not an array',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle multiple pools with non-array data', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const uniswapPoolsData = {
+        pool1: null,
+        pool2: undefined,
+        pool3: 123,
+        pool4: [
+          {
+            date: 1672531200,
+            feesUSD: '567.890123',
+            volumeUSD: '56789.012345',
+          },
+        ],
+      };
+
+      const result = processor.processUniswapPoolDataResponse(uniswapPoolsData);
+
+      expect(result).toEqual({
+        pool1: [],
+        pool2: [],
+        pool3: [],
+        pool4: [
+          {
+            timestamp: '2023-01-01T00:00:00.000Z',
+            feesUSD: 567.890123,
+            volumeUSD: 56789.012345,
+          },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledTimes(3);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for Uniswap pool pool1 is not an array',
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for Uniswap pool pool2 is not an array',
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Data for Uniswap pool pool3 is not an array',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle empty arrays for pools', () => {
+      const uniswapPoolsData = {
+        pool1: [],
+        pool2: [],
+        pool3: [],
+      };
+
+      const result = processor.processUniswapPoolDataResponse(uniswapPoolsData);
+
+      expect(result).toEqual({
+        pool1: [],
+        pool2: [],
+        pool3: [],
+      });
+    });
+
+    it('should handle invalid data within arrays', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      const uniswapPoolsData = {
+        pool1: [
+          {
+            date: 1672531200,
+            feesUSD: '123.456789',
+            volumeUSD: '12345.678901',
+          },
+          {
+            date: 'invalid-date',
+            feesUSD: '234.567890',
+            volumeUSD: '23456.789012',
+          },
+          {
+            date: 1672704000,
+            feesUSD: 'not-a-number',
+            volumeUSD: '34567.890123',
+          },
+          {
+            date: 1672790400,
+            feesUSD: '456.789012',
+            volumeUSD: '45678.901234',
+          },
+        ],
+        pool2: [
+          {
+            date: 1672531200,
+            feesUSD: '567.890123',
+            volumeUSD: '56789.012345',
+          },
+          {
+            date: 1672617600,
+            feesUSD: '678.901234',
+            volumeUSD: '67890.123456',
+          },
+        ],
+      };
+
+      const result = processor.processUniswapPoolDataResponse(uniswapPoolsData);
+
+      expect(result).toEqual({
+        pool1: [
+          {
+            timestamp: '2023-01-04T00:00:00.000Z',
+            feesUSD: 456.789012,
+            volumeUSD: 45678.901234,
+          },
+          {
+            timestamp: '2023-01-01T00:00:00.000Z',
+            feesUSD: 123.456789,
+            volumeUSD: 12345.678901,
+          },
+        ],
+        pool2: [
+          {
+            timestamp: '2023-01-02T00:00:00.000Z',
+            feesUSD: 678.901234,
+            volumeUSD: 67890.123456,
+          },
+          {
+            timestamp: '2023-01-01T00:00:00.000Z',
+            feesUSD: 567.890123,
+            volumeUSD: 56789.012345,
+          },
+        ],
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid Uniswap pool data'),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle null or undefined input', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const result1 = processor.processUniswapPoolDataResponse(null);
+      expect(result1).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'uniswapPoolsData must be a non-null object',
+      );
+
+      const result2 = processor.processUniswapPoolDataResponse(undefined);
+      expect(result2).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'uniswapPoolsData must be a non-null object',
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle non-object input', () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const result1 = processor.processUniswapPoolDataResponse('not-an-object');
+      expect(result1).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'uniswapPoolsData must be a non-null object',
+      );
+
+      const result2 = processor.processUniswapPoolDataResponse(123);
+      expect(result2).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'uniswapPoolsData must be a non-null object',
+      );
+
+      const result3 = processor.processUniswapPoolDataResponse(true);
+      expect(result3).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'uniswapPoolsData must be a non-null object',
+      );
+
+      const result4 = processor.processUniswapPoolDataResponse([]);
+      expect(result4).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'uniswapPoolsData must be a non-null object',
       );
 
       consoleSpy.mockRestore();
