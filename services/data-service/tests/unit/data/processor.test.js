@@ -3788,4 +3788,122 @@ describe('Data Processing Functions', () => {
       expect(result).toEqual({});
     });
   });
+
+  describe('addSymbolToPriceData', () => {
+    let consoleErrorSpy;
+    let consoleWarnSpy;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('returns empty object when priceData is null', () => {
+      const result = processor.addSymbolToPriceData(null);
+      expect(result).toEqual({});
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Invalid priceData: must be a non-null object',
+      );
+    });
+
+    it('returns empty object when priceData is an array', () => {
+      const result = processor.addSymbolToPriceData([]);
+      expect(result).toEqual({});
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Invalid priceData: must be a non-null object',
+      );
+    });
+
+    it('returns empty object when priceData is not an object', () => {
+      const result = processor.addSymbolToPriceData('not an object');
+      expect(result).toEqual({});
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Invalid priceData: must be a non-null object',
+      );
+    });
+
+    it('skips token when dailyPriceData is not an array', () => {
+      const priceData = { token1: 'not an array' };
+      const result = processor.addSymbolToPriceData(priceData);
+      expect(result).toEqual({});
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Price data for 'token1' is not an array",
+      );
+    });
+
+    it('adds token symbol to price data for multiple tokens', () => {
+      const priceData = {
+        token1: [
+          { timestamp: '2023-01-01', priceUsd: 100 },
+          { timestamp: '2023-01-02', priceUsd: 105 },
+        ],
+        token2: [
+          { timestamp: '2023-01-01', priceUsd: 200 },
+          { timestamp: '2023-01-02', priceUsd: 210 },
+        ],
+      };
+      const result = processor.addSymbolToPriceData(priceData);
+      expect(result).toEqual({
+        token1: [
+          { timestamp: '2023-01-01', priceUsd: 100, tokenSymbol: 'TOKEN1' },
+          { timestamp: '2023-01-02', priceUsd: 105, tokenSymbol: 'TOKEN1' },
+        ],
+        token2: [
+          { timestamp: '2023-01-01', priceUsd: 200, tokenSymbol: 'TOKEN2' },
+          { timestamp: '2023-01-02', priceUsd: 210, tokenSymbol: 'TOKEN2' },
+        ],
+      });
+    });
+
+    it('handles tokens with empty price data arrays', () => {
+      const priceData = { token1: [] };
+      const result = processor.addSymbolToPriceData(priceData);
+      expect(result).toEqual({ token1: [] });
+    });
+
+    it('returns empty object when priceData is an empty object', () => {
+      const result = processor.addSymbolToPriceData({});
+      expect(result).toEqual({});
+    });
+
+    it('handles tokens with mixed valid and invalid data', () => {
+      const priceData = {
+        token1: [{ timestamp: '2023-01-01', priceUsd: 100 }],
+        token2: 'not an array',
+      };
+      const result = processor.addSymbolToPriceData(priceData);
+      expect(result).toEqual({
+        token1: [
+          { timestamp: '2023-01-01', priceUsd: 100, tokenSymbol: 'TOKEN1' },
+        ],
+      });
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Price data for 'token2' is not an array",
+      );
+    });
+
+    it('preserves additional properties in price data', () => {
+      const priceData = {
+        token1: [{ timestamp: '2023-01-01', priceUsd: 100, extra: 'data' }],
+      };
+      const result = processor.addSymbolToPriceData(priceData);
+      expect(result).toEqual({
+        token1: [
+          {
+            timestamp: '2023-01-01',
+            priceUsd: 100,
+            extra: 'data',
+            tokenSymbol: 'TOKEN1',
+          },
+        ],
+      });
+    });
+  });
 });
