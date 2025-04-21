@@ -3422,4 +3422,228 @@ describe('Data Processing Functions', () => {
       expect(result).toEqual({ key1: [] });
     });
   });
+
+  describe('checkTimestampAlignment', () => {
+    let consoleErrorSpy;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('returns false when tvlData is null', () => {
+      const result = processor.checkTimestampAlignment(null, {});
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Invalid inputs: tvlData or uniswapPoolsData must be non-null objects',
+      );
+    });
+
+    test('returns false when uniswapPoolsData is null', () => {
+      const result = processor.checkTimestampAlignment({}, null);
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Invalid inputs: tvlData or uniswapPoolsData must be non-null objects',
+      );
+    });
+
+    test('returns false when tvlData is an array', () => {
+      const result = processor.checkTimestampAlignment([], {});
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Invalid inputs: tvlData or uniswapPoolsData must be non-null objects',
+      );
+    });
+
+    test('returns false when uniswapPoolsData is an array', () => {
+      const result = processor.checkTimestampAlignment({}, []);
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Invalid inputs: tvlData or uniswapPoolsData must be non-null objects',
+      );
+    });
+
+    test('returns false when pool not found in tvlData', () => {
+      const tvlData = {};
+      const uniswapPoolsData = { pool1: [{ timestamp: '2023-01-01' }] };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Pool 'pool1' not found in tvlData",
+      );
+    });
+
+    test('returns false when uniswapPoolsData pool data is not an array', () => {
+      const tvlData = { pool1: [{ timestamp: '2023-01-01' }] };
+      const uniswapPoolsData = { pool1: 'not an array' };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Data for pool 'pool1' is not an array in one of the datasets",
+      );
+    });
+
+    test('returns false when tvlData pool data is not an array', () => {
+      const tvlData = { pool1: 'not an array' };
+      const uniswapPoolsData = { pool1: [{ timestamp: '2023-01-01' }] };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Data for pool 'pool1' is not an array in one of the datasets",
+      );
+    });
+
+    test('returns false when data lengths mismatch', () => {
+      const tvlData = { pool1: [{ timestamp: '2023-01-01' }] };
+      const uniswapPoolsData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+      };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Data length mismatch for pool 'pool1': uniswapPoolsData has 2, tvlData has 1",
+      );
+    });
+
+    test('returns false when timestamps mismatch', () => {
+      const tvlData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+      };
+      const uniswapPoolsData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-03' }],
+      };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Timestamp mismatch at index 1 of pool 'pool1': 2023-01-03 !== 2023-01-02",
+      );
+    });
+
+    test('returns true when timestamps align across all pools', () => {
+      const tvlData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+        pool2: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+      };
+      const uniswapPoolsData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+        pool2: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+      };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(true);
+    });
+
+    test('returns true when both datasets are empty', () => {
+      const tvlData = {};
+      const uniswapPoolsData = {};
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(true);
+    });
+
+    test('returns false when one pool has mismatched timestamps', () => {
+      const tvlData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+        pool2: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+      };
+      const uniswapPoolsData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+        pool2: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-03' }],
+      };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Timestamp mismatch at index 1 of pool 'pool2': 2023-01-03 !== 2023-01-02",
+      );
+    });
+
+    test('returns false when one pool has different length', () => {
+      const tvlData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+        pool2: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+      };
+      const uniswapPoolsData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+        pool2: [{ timestamp: '2023-01-01' }],
+      };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Data length mismatch for pool 'pool2': uniswapPoolsData has 1, tvlData has 2",
+      );
+    });
+
+    test('returns false when a pool is missing in tvlData', () => {
+      const tvlData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+      };
+      const uniswapPoolsData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+        pool2: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+      };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Pool 'pool2' not found in tvlData",
+      );
+    });
+
+    test('returns true when pool data arrays are empty', () => {
+      const tvlData = { pool1: [] };
+      const uniswapPoolsData = { pool1: [] };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(true);
+    });
+
+    test('returns false when timestamp is missing in one dataset', () => {
+      const tvlData = { pool1: [{ timestamp: '2023-01-01' }, {}] };
+      const uniswapPoolsData = {
+        pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
+      };
+      const result = processor.checkTimestampAlignment(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Timestamp mismatch at index 1 of pool 'pool1': 2023-01-02 !== undefined",
+      );
+    });
+  });
 });
