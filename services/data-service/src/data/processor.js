@@ -51,7 +51,7 @@ export function roundToDecimal(num, numOfPlaces) {
  *                          specified output field or an empty array if the input is invalid.
  */
 export function formatPoolData(rawData, options) {
-  if (!options || typeof options !== 'object') {
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
     console.warn('options parameter is missing or not an object');
     return [];
   }
@@ -524,7 +524,12 @@ export function getMetrics(validDates, recordMap) {
  * @returns {Object<string, number>} Simulated metrics as integers.
  */
 export function simulateMetrics(metricsBefore, metricsAfter) {
-  if (typeof metricsBefore !== 'object' || typeof metricsAfter !== 'object') {
+  if (
+    typeof metricsBefore !== 'object' ||
+    typeof metricsAfter !== 'object' ||
+    Array.isArray(metricsBefore) ||
+    Array.isArray(metricsAfter)
+  ) {
     console.warn(
       `Invalid inputs: metricsBefore=${metricsBefore}, metricsAfter=${metricsAfter}`,
     );
@@ -586,6 +591,8 @@ export function fillMissingDates(data, missingDates) {
   if (
     typeof data !== 'object' ||
     typeof missingDates !== 'object' ||
+    Array.isArray(data) ||
+    Array.isArray(missingDates) ||
     data === null ||
     missingDates === null
   ) {
@@ -661,6 +668,8 @@ export function checkTimestampAlignment(tvlData, uniswapPoolsData) {
   if (
     typeof tvlData !== 'object' ||
     typeof uniswapPoolsData !== 'object' ||
+    Array.isArray(tvlData) ||
+    Array.isArray(uniswapPoolsData) ||
     tvlData === null ||
     uniswapPoolsData === null
   ) {
@@ -756,7 +765,11 @@ export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
  * }>>} Price data with symbols.
  */
 export function addSymbolToPriceData(priceData) {
-  if (typeof priceData !== 'object' || priceData === null) {
+  if (
+    typeof priceData !== 'object' ||
+    Array.isArray(priceData) ||
+    priceData === null
+  ) {
     console.error('Invalid priceData: must be a non-null object');
     return {};
   }
