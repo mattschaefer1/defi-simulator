@@ -3061,19 +3061,19 @@ describe('Data Processing Functions', () => {
   });
 
   describe('getMetrics', () => {
-    test('should return empty object for empty inputs', () => {
+    it('should return empty object for empty inputs', () => {
       const result = processor.getMetrics([], new Map());
       expect(result).toEqual({});
     });
 
-    test('should return empty object for invalid inputs', () => {
+    it('should return empty object for invalid inputs', () => {
       expect(processor.getMetrics(null, new Map())).toEqual({});
       expect(processor.getMetrics([], null)).toEqual({});
       expect(processor.getMetrics('not an array', new Map())).toEqual({});
       expect(processor.getMetrics([], 'not a map')).toEqual({});
     });
 
-    test('should correctly process valid records with metrics', () => {
+    it('should correctly process valid records with metrics', () => {
       const validDates = ['2024-01-01T00:00:00Z', '2024-01-02T00:00:00Z'];
       const recordMap = new Map([
         [
@@ -3093,7 +3093,7 @@ describe('Data Processing Functions', () => {
       });
     });
 
-    test('should handle missing records for some dates', () => {
+    it('should handle missing records for some dates', () => {
       const validDates = [
         '2024-01-01T00:00:00Z',
         '2024-01-02T00:00:00Z',
@@ -3116,7 +3116,7 @@ describe('Data Processing Functions', () => {
       });
     });
 
-    test('should handle records with different metric keys', () => {
+    it('should handle records with different metric keys', () => {
       const validDates = ['2024-01-01T00:00:00Z', '2024-01-02T00:00:00Z'];
       const recordMap = new Map([
         [
@@ -3136,7 +3136,7 @@ describe('Data Processing Functions', () => {
       });
     });
 
-    test('should ignore timestamp field in records', () => {
+    it('should ignore timestamp field in records', () => {
       const validDates = ['2024-01-01T00:00:00Z'];
       const recordMap = new Map([
         [
@@ -3158,18 +3158,18 @@ describe('Data Processing Functions', () => {
   });
 
   describe('simulateMetrics', () => {
-    test('should return empty object for invalid inputs', () => {
+    it('should return empty object for invalid inputs', () => {
       expect(processor.simulateMetrics(null, {})).toEqual({});
       expect(processor.simulateMetrics({}, null)).toEqual({});
       expect(processor.simulateMetrics('not an object', {})).toEqual({});
       expect(processor.simulateMetrics({}, 'not an object')).toEqual({});
     });
 
-    test('should handle empty inputs', () => {
+    it('should handle empty inputs', () => {
       expect(processor.simulateMetrics({}, {})).toEqual({});
     });
 
-    test('should simulate metrics when both before and after data exist', () => {
+    it('should simulate metrics when both before and after data exist', () => {
       const metricsBefore = { price: [100, 110], volume: [1000, 1100] };
       const metricsAfter = { price: [120, 130], volume: [1200, 1300] };
 
@@ -3189,7 +3189,7 @@ describe('Data Processing Functions', () => {
       expect(Number.isInteger(result.volume)).toBe(true);
     });
 
-    test('should use only before data when after data is missing', () => {
+    it('should use only before data when after data is missing', () => {
       const metricsBefore = { price: [100, 110], volume: [1000, 1100] };
       const metricsAfter = {};
 
@@ -3200,7 +3200,7 @@ describe('Data Processing Functions', () => {
       expect(result.volume).toBe(1050);
     });
 
-    test('should use only after data when before data is missing', () => {
+    it('should use only after data when before data is missing', () => {
       const metricsBefore = {};
       const metricsAfter = { price: [120, 130], volume: [1200, 1300] };
 
@@ -3211,7 +3211,7 @@ describe('Data Processing Functions', () => {
       expect(result.volume).toBe(1250);
     });
 
-    test('should handle non-numeric values in arrays', () => {
+    it('should handle non-numeric values in arrays', () => {
       const metricsBefore = {
         price: [100, 'invalid', 110],
         volume: [1000, null, 1100],
@@ -3230,7 +3230,7 @@ describe('Data Processing Functions', () => {
       expect(result.volume).toBeLessThanOrEqual(1300);
     });
 
-    test('should default to 0 when no numeric data is available', () => {
+    it('should default to 0 when no numeric data is available', () => {
       const metricsBefore = { price: [], volume: [] };
       const metricsAfter = { price: [], volume: [] };
 
@@ -3240,7 +3240,7 @@ describe('Data Processing Functions', () => {
       expect(result.volume).toBe(0);
     });
 
-    test('should handle metrics present in only one input', () => {
+    it('should handle metrics present in only one input', () => {
       const metricsBefore = { price: [100, 110], volume: [1000, 1100] };
       const metricsAfter = { price: [120, 130], liquidity: [500, 600] };
 
@@ -3262,30 +3262,30 @@ describe('Data Processing Functions', () => {
   });
 
   describe('fillMissingDates', () => {
-    test('returns empty object when data is null', () => {
+    it('returns empty object when data is null', () => {
       const result = processor.fillMissingDates(null, {});
       expect(result).toEqual({});
     });
 
-    test('returns data when data is an array', () => {
+    it('returns data when data is an array', () => {
       const data = [];
       const result = processor.fillMissingDates(data, {});
       expect(result).toBe(data);
     });
 
-    test('returns data when missingDates is null', () => {
+    it('returns data when missingDates is null', () => {
       const data = {};
       const result = processor.fillMissingDates(data, null);
       expect(result).toBe(data);
     });
 
-    test('returns data when missingDates is an array', () => {
+    it('returns data when missingDates is an array', () => {
       const data = { key1: [] };
       const result = processor.fillMissingDates(data, []);
       expect(result).toBe(data);
     });
 
-    test('skips key when missingDates[key] is not an array', () => {
+    it('skips key when missingDates[key] is not an array', () => {
       const data = {
         key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
       };
@@ -3294,14 +3294,14 @@ describe('Data Processing Functions', () => {
       expect(result).toBe(data);
     });
 
-    test('skips key when data[key] is not an array', () => {
+    it('skips key when data[key] is not an array', () => {
       const data = { key1: 'not an array' };
       const missingDates = { key1: ['2023-01-01T00:00:00.000Z'] };
       const result = processor.fillMissingDates(data, missingDates);
       expect(result).toBe(data);
     });
 
-    test('skips invalid date in missingDates', () => {
+    it('skips invalid date in missingDates', () => {
       const data = {
         key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
       };
@@ -3310,7 +3310,7 @@ describe('Data Processing Functions', () => {
       expect(result).toEqual(data);
     });
 
-    test('returns data when missingDates has non-existent key', () => {
+    it('returns data when missingDates has non-existent key', () => {
       const data = {
         key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
       };
@@ -3319,7 +3319,7 @@ describe('Data Processing Functions', () => {
       expect(result).toEqual(data);
     });
 
-    test('fills missing date with valid dates before and after', () => {
+    it('fills missing date with valid dates before and after', () => {
       const data = {
         key1: [
           { timestamp: '2023-01-01T00:00:00.000Z', metric: 10 },
@@ -3332,7 +3332,7 @@ describe('Data Processing Functions', () => {
       expect(result.key1[1].metric).toBeLessThanOrEqual(20);
     });
 
-    test('fills missing date with only dates before', () => {
+    it('fills missing date with only dates before', () => {
       const data = {
         key1: [
           { timestamp: '2023-01-01T00:00:00.000Z', metric: 10 },
@@ -3350,7 +3350,7 @@ describe('Data Processing Functions', () => {
       });
     });
 
-    test('fills missing date with only dates after', () => {
+    it('fills missing date with only dates after', () => {
       const data = {
         key1: [
           { timestamp: '2023-01-02T00:00:00.000Z', metric: 15 },
@@ -3368,14 +3368,14 @@ describe('Data Processing Functions', () => {
       });
     });
 
-    test('handles key with no data by setting zero metrics', () => {
+    it('handles key with no data by setting zero metrics', () => {
       const data = { key1: [] };
       const missingDates = { key1: ['2023-01-01T00:00:00.000Z'] };
       const result = processor.fillMissingDates(data, missingDates);
       expect(result).toEqual(data);
     });
 
-    test('fills multiple missing dates', () => {
+    it('fills multiple missing dates', () => {
       const data = {
         key1: [
           { timestamp: '2023-01-01T00:00:00.000Z', metric: 10 },
@@ -3392,7 +3392,7 @@ describe('Data Processing Functions', () => {
       expect(result.key1[2].metric).toBeLessThanOrEqual(40);
     });
 
-    test('processes only keys in missingDates', () => {
+    it('processes only keys in missingDates', () => {
       const data = {
         key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
         key2: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 20 }],
@@ -3408,14 +3408,14 @@ describe('Data Processing Functions', () => {
       });
     });
 
-    test('returns data when missingDates is empty', () => {
+    it('returns data when missingDates is empty', () => {
       const data = { key1: [] };
       const missingDates = {};
       const result = processor.fillMissingDates(data, missingDates);
       expect(result).toBe(data);
     });
 
-    test('processes key with empty data array', () => {
+    it('processes key with empty data array', () => {
       const data = { key1: [] };
       const missingDates = { key1: ['2023-01-01T00:00:00.000Z'] };
       const result = processor.fillMissingDates(data, missingDates);
@@ -3436,7 +3436,7 @@ describe('Data Processing Functions', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    test('returns false when tvlData is null', () => {
+    it('returns false when tvlData is null', () => {
       const result = processor.checkTimestampAlignment(null, {});
       expect(result).toBe(false);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -3444,7 +3444,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when uniswapPoolsData is null', () => {
+    it('returns false when uniswapPoolsData is null', () => {
       const result = processor.checkTimestampAlignment({}, null);
       expect(result).toBe(false);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -3452,7 +3452,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when tvlData is an array', () => {
+    it('returns false when tvlData is an array', () => {
       const result = processor.checkTimestampAlignment([], {});
       expect(result).toBe(false);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -3460,7 +3460,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when uniswapPoolsData is an array', () => {
+    it('returns false when uniswapPoolsData is an array', () => {
       const result = processor.checkTimestampAlignment({}, []);
       expect(result).toBe(false);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -3468,7 +3468,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when pool not found in tvlData', () => {
+    it('returns false when pool not found in tvlData', () => {
       const tvlData = {};
       const uniswapPoolsData = { pool1: [{ timestamp: '2023-01-01' }] };
       const result = processor.checkTimestampAlignment(
@@ -3481,7 +3481,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when uniswapPoolsData pool data is not an array', () => {
+    it('returns false when uniswapPoolsData pool data is not an array', () => {
       const tvlData = { pool1: [{ timestamp: '2023-01-01' }] };
       const uniswapPoolsData = { pool1: 'not an array' };
       const result = processor.checkTimestampAlignment(
@@ -3494,7 +3494,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when tvlData pool data is not an array', () => {
+    it('returns false when tvlData pool data is not an array', () => {
       const tvlData = { pool1: 'not an array' };
       const uniswapPoolsData = { pool1: [{ timestamp: '2023-01-01' }] };
       const result = processor.checkTimestampAlignment(
@@ -3507,7 +3507,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when data lengths mismatch', () => {
+    it('returns false when data lengths mismatch', () => {
       const tvlData = { pool1: [{ timestamp: '2023-01-01' }] };
       const uniswapPoolsData = {
         pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
@@ -3522,7 +3522,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when timestamps mismatch', () => {
+    it('returns false when timestamps mismatch', () => {
       const tvlData = {
         pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
       };
@@ -3539,7 +3539,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns true when timestamps align across all pools', () => {
+    it('returns true when timestamps align across all pools', () => {
       const tvlData = {
         pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
         pool2: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
@@ -3555,7 +3555,7 @@ describe('Data Processing Functions', () => {
       expect(result).toBe(true);
     });
 
-    test('returns true when both datasets are empty', () => {
+    it('returns true when both datasets are empty', () => {
       const tvlData = {};
       const uniswapPoolsData = {};
       const result = processor.checkTimestampAlignment(
@@ -3565,7 +3565,7 @@ describe('Data Processing Functions', () => {
       expect(result).toBe(true);
     });
 
-    test('returns false when one pool has mismatched timestamps', () => {
+    it('returns false when one pool has mismatched timestamps', () => {
       const tvlData = {
         pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
         pool2: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
@@ -3584,7 +3584,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when one pool has different length', () => {
+    it('returns false when one pool has different length', () => {
       const tvlData = {
         pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
         pool2: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
@@ -3603,7 +3603,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns false when a pool is missing in tvlData', () => {
+    it('returns false when a pool is missing in tvlData', () => {
       const tvlData = {
         pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
       };
@@ -3621,7 +3621,7 @@ describe('Data Processing Functions', () => {
       );
     });
 
-    test('returns true when pool data arrays are empty', () => {
+    it('returns true when pool data arrays are empty', () => {
       const tvlData = { pool1: [] };
       const uniswapPoolsData = { pool1: [] };
       const result = processor.checkTimestampAlignment(
@@ -3631,7 +3631,7 @@ describe('Data Processing Functions', () => {
       expect(result).toBe(true);
     });
 
-    test('returns false when timestamp is missing in one dataset', () => {
+    it('returns false when timestamp is missing in one dataset', () => {
       const tvlData = { pool1: [{ timestamp: '2023-01-01' }, {}] };
       const uniswapPoolsData = {
         pool1: [{ timestamp: '2023-01-01' }, { timestamp: '2023-01-02' }],
@@ -3644,6 +3644,148 @@ describe('Data Processing Functions', () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "Timestamp mismatch at index 1 of pool 'pool1': 2023-01-02 !== undefined",
       );
+    });
+  });
+
+  describe('formatLiquidityPoolData', () => {
+    let consoleWarnSpy;
+
+    beforeEach(() => {
+      consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('formats data correctly when timestamps align for multiple pools', () => {
+      const tvlData = {
+        wethUsdc: [
+          { timestamp: '2023-01-01', tvlUsd: 1000 },
+          { timestamp: '2023-01-02', tvlUsd: 1100 },
+        ],
+        wbtcUsdc: [
+          { timestamp: '2023-01-01', tvlUsd: 2000 },
+          { timestamp: '2023-01-02', tvlUsd: 2100 },
+        ],
+      };
+      const uniswapPoolsData = {
+        wethUsdc: [
+          { timestamp: '2023-01-01', liquidity: 500 },
+          { timestamp: '2023-01-02', liquidity: 550 },
+        ],
+        wbtcUsdc: [
+          { timestamp: '2023-01-01', liquidity: 1000 },
+          { timestamp: '2023-01-02', liquidity: 1050 },
+        ],
+      };
+      const result = processor.formatLiquidityPoolData(
+        tvlData,
+        uniswapPoolsData,
+      );
+
+      expect(result).toEqual({
+        wethUsdc: [
+          {
+            timestamp: '2023-01-01',
+            poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
+            tvlUsd: 1000,
+            liquidity: 500,
+          },
+          {
+            timestamp: '2023-01-02',
+            poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
+            tvlUsd: 1100,
+            liquidity: 550,
+          },
+        ],
+        wbtcUsdc: [
+          {
+            timestamp: '2023-01-01',
+            poolAddress: '0x99ac8ca7087fa4a2a1fb6357269965a2014abc35',
+            tvlUsd: 2000,
+            liquidity: 1000,
+          },
+          {
+            timestamp: '2023-01-02',
+            poolAddress: '0x99ac8ca7087fa4a2a1fb6357269965a2014abc35',
+            tvlUsd: 2100,
+            liquidity: 1050,
+          },
+        ],
+      });
+    });
+
+    it('returns empty object when timestamps do not align', () => {
+      const tvlData = {
+        pool1: [{ timestamp: '2023-01-01', tvlUsd: 1000 }],
+      };
+      const uniswapPoolsData = {
+        pool1: [{ timestamp: '2023-01-02', liquidity: 500 }],
+      };
+      const result = processor.formatLiquidityPoolData(
+        tvlData,
+        uniswapPoolsData,
+      );
+
+      expect(result).toEqual({});
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Timestamp alignment failed; returning empty object',
+      );
+    });
+
+    it('skips pools without addresses and logs warnings', () => {
+      const tvlData = {
+        wethUsdc: [{ timestamp: '2023-01-01', tvlUsd: 1000 }],
+        pool1: [{ timestamp: '2023-01-01', tvlUsd: 3000 }],
+      };
+      const uniswapPoolsData = {
+        wethUsdc: [{ timestamp: '2023-01-01', liquidity: 500 }],
+        pool1: [{ timestamp: '2023-01-01', liquidity: 1500 }],
+      };
+      const result = processor.formatLiquidityPoolData(
+        tvlData,
+        uniswapPoolsData,
+      );
+
+      expect(result).toEqual({
+        wethUsdc: [
+          {
+            timestamp: '2023-01-01',
+            poolAddress: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
+            tvlUsd: 1000,
+            liquidity: 500,
+          },
+        ],
+      });
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "No pool address for 'pool1'",
+      );
+    });
+
+    it('returns empty object for invalid inputs', () => {
+      const result = processor.formatLiquidityPoolData(null, {});
+      expect(result).toEqual({});
+    });
+
+    it('returns empty object when both inputs are empty', () => {
+      const tvlData = {};
+      const uniswapPoolsData = {};
+      const result = processor.formatLiquidityPoolData(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toEqual({});
+    });
+
+    it('handles pools with empty data arrays', () => {
+      const tvlData = { pool1: [] };
+      const uniswapPoolsData = { pool1: [] };
+      const result = processor.formatLiquidityPoolData(
+        tvlData,
+        uniswapPoolsData,
+      );
+      expect(result).toEqual({});
     });
   });
 });
