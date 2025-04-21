@@ -538,10 +538,14 @@ export function simulateMetrics(metricsBefore, metricsAfter) {
 
   Array.from(allMetrics).forEach((metric) => {
     const beforeValues = Array.isArray(metricsBefore[metric])
-      ? metricsBefore[metric].filter((v) => typeof v === 'number')
+      ? metricsBefore[metric].filter(
+          (v) => typeof v === 'number' && !Number.isNaN(v),
+        )
       : [];
     const afterValues = Array.isArray(metricsAfter[metric])
-      ? metricsAfter[metric].filter((v) => typeof v === 'number')
+      ? metricsAfter[metric].filter(
+          (v) => typeof v === 'number' && !Number.isNaN(v),
+        )
       : [];
     let simulatedValue;
 

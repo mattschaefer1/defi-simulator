@@ -3156,4 +3156,108 @@ describe('Data Processing Functions', () => {
       });
     });
   });
+
+  describe('simulateMetrics', () => {
+    test('should return empty object for invalid inputs', () => {
+      expect(processor.simulateMetrics(null, {})).toEqual({});
+      expect(processor.simulateMetrics({}, null)).toEqual({});
+      expect(processor.simulateMetrics('not an object', {})).toEqual({});
+      expect(processor.simulateMetrics({}, 'not an object')).toEqual({});
+    });
+
+    test('should handle empty inputs', () => {
+      expect(processor.simulateMetrics({}, {})).toEqual({});
+    });
+
+    test('should simulate metrics when both before and after data exist', () => {
+      const metricsBefore = { price: [100, 110], volume: [1000, 1100] };
+      const metricsAfter = { price: [120, 130], volume: [1200, 1300] };
+
+      const result = processor.simulateMetrics(metricsBefore, metricsAfter);
+
+      // Check that all metrics are present
+      expect(Object.keys(result)).toEqual(['price', 'volume']);
+
+      // Check that values are within expected ranges
+      expect(result.price).toBeGreaterThanOrEqual(100);
+      expect(result.price).toBeLessThanOrEqual(130);
+      expect(result.volume).toBeGreaterThanOrEqual(1000);
+      expect(result.volume).toBeLessThanOrEqual(1300);
+
+      // Check that values are integers
+      expect(Number.isInteger(result.price)).toBe(true);
+      expect(Number.isInteger(result.volume)).toBe(true);
+    });
+
+    test('should use only before data when after data is missing', () => {
+      const metricsBefore = { price: [100, 110], volume: [1000, 1100] };
+      const metricsAfter = {};
+
+      const result = processor.simulateMetrics(metricsBefore, metricsAfter);
+
+      // Should use average of before values
+      expect(result.price).toBe(105);
+      expect(result.volume).toBe(1050);
+    });
+
+    test('should use only after data when before data is missing', () => {
+      const metricsBefore = {};
+      const metricsAfter = { price: [120, 130], volume: [1200, 1300] };
+
+      const result = processor.simulateMetrics(metricsBefore, metricsAfter);
+
+      // Should use average of after values
+      expect(result.price).toBe(125);
+      expect(result.volume).toBe(1250);
+    });
+
+    test('should handle non-numeric values in arrays', () => {
+      const metricsBefore = {
+        price: [100, 'invalid', 110],
+        volume: [1000, null, 1100],
+      };
+      const metricsAfter = {
+        price: [120, undefined, 130],
+        volume: [1200, NaN, 1300],
+      };
+
+      const result = processor.simulateMetrics(metricsBefore, metricsAfter);
+
+      // Should filter out non-numeric values and use only valid numbers
+      expect(result.price).toBeGreaterThanOrEqual(100);
+      expect(result.price).toBeLessThanOrEqual(130);
+      expect(result.volume).toBeGreaterThanOrEqual(1000);
+      expect(result.volume).toBeLessThanOrEqual(1300);
+    });
+
+    test('should default to 0 when no numeric data is available', () => {
+      const metricsBefore = { price: [], volume: [] };
+      const metricsAfter = { price: [], volume: [] };
+
+      const result = processor.simulateMetrics(metricsBefore, metricsAfter);
+
+      expect(result.price).toBe(0);
+      expect(result.volume).toBe(0);
+    });
+
+    test('should handle metrics present in only one input', () => {
+      const metricsBefore = { price: [100, 110], volume: [1000, 1100] };
+      const metricsAfter = { price: [120, 130], liquidity: [500, 600] };
+
+      const result = processor.simulateMetrics(metricsBefore, metricsAfter);
+
+      // Should handle all metrics from both inputs
+      expect(Object.keys(result)).toEqual(['price', 'volume', 'liquidity']);
+
+      // Price should be simulated from both before and after
+      expect(result.price).toBeGreaterThanOrEqual(100);
+      expect(result.price).toBeLessThanOrEqual(130);
+
+      // Volume should use only before data
+      expect(result.volume).toBe(1050);
+
+      // Liquidity should use only after data
+      expect(result.liquidity).toBe(550);
+    });
+  });
 });
