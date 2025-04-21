@@ -3260,4 +3260,166 @@ describe('Data Processing Functions', () => {
       expect(result.liquidity).toBe(550);
     });
   });
+
+  describe('fillMissingDates', () => {
+    test('returns empty object when data is null', () => {
+      const result = processor.fillMissingDates(null, {});
+      expect(result).toEqual({});
+    });
+
+    test('returns data when data is an array', () => {
+      const data = [];
+      const result = processor.fillMissingDates(data, {});
+      expect(result).toBe(data);
+    });
+
+    test('returns data when missingDates is null', () => {
+      const data = {};
+      const result = processor.fillMissingDates(data, null);
+      expect(result).toBe(data);
+    });
+
+    test('returns data when missingDates is an array', () => {
+      const data = { key1: [] };
+      const result = processor.fillMissingDates(data, []);
+      expect(result).toBe(data);
+    });
+
+    test('skips key when missingDates[key] is not an array', () => {
+      const data = {
+        key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
+      };
+      const missingDates = { key1: 'not an array' };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toBe(data);
+    });
+
+    test('skips key when data[key] is not an array', () => {
+      const data = { key1: 'not an array' };
+      const missingDates = { key1: ['2023-01-01T00:00:00.000Z'] };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toBe(data);
+    });
+
+    test('skips invalid date in missingDates', () => {
+      const data = {
+        key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
+      };
+      const missingDates = { key1: ['invalid-date'] };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toEqual(data);
+    });
+
+    test('returns data when missingDates has non-existent key', () => {
+      const data = {
+        key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
+      };
+      const missingDates = { key2: ['2023-01-02T00:00:00.000Z'] };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toEqual(data);
+    });
+
+    test('fills missing date with valid dates before and after', () => {
+      const data = {
+        key1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', metric: 10 },
+          { timestamp: '2023-01-03T00:00:00.000Z', metric: 20 },
+        ],
+      };
+      const missingDates = { key1: ['2023-01-02T00:00:00.000Z'] };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result.key1[1].metric).toBeGreaterThanOrEqual(10);
+      expect(result.key1[1].metric).toBeLessThanOrEqual(20);
+    });
+
+    test('fills missing date with only dates before', () => {
+      const data = {
+        key1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', metric: 10 },
+          { timestamp: '2023-01-02T00:00:00.000Z', metric: 15 },
+        ],
+      };
+      const missingDates = { key1: ['2023-01-03T00:00:00.000Z'] };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toEqual({
+        key1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', metric: 10 },
+          { timestamp: '2023-01-02T00:00:00.000Z', metric: 15 },
+          { timestamp: '2023-01-03T00:00:00.000Z', metric: 12 },
+        ],
+      });
+    });
+
+    test('fills missing date with only dates after', () => {
+      const data = {
+        key1: [
+          { timestamp: '2023-01-02T00:00:00.000Z', metric: 15 },
+          { timestamp: '2023-01-03T00:00:00.000Z', metric: 20 },
+        ],
+      };
+      const missingDates = { key1: ['2023-01-01T00:00:00.000Z'] };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toEqual({
+        key1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', metric: 17 },
+          { timestamp: '2023-01-02T00:00:00.000Z', metric: 15 },
+          { timestamp: '2023-01-03T00:00:00.000Z', metric: 20 },
+        ],
+      });
+    });
+
+    test('handles key with no data by setting zero metrics', () => {
+      const data = { key1: [] };
+      const missingDates = { key1: ['2023-01-01T00:00:00.000Z'] };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toEqual(data);
+    });
+
+    test('fills multiple missing dates', () => {
+      const data = {
+        key1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', metric: 10 },
+          { timestamp: '2023-01-04T00:00:00.000Z', metric: 40 },
+        ],
+      };
+      const missingDates = {
+        key1: ['2023-01-02T00:00:00.000Z', '2023-01-03T00:00:00.000Z'],
+      };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result.key1[1].metric).toBeGreaterThanOrEqual(10);
+      expect(result.key1[1].metric).toBeLessThanOrEqual(40);
+      expect(result.key1[2].metric).toBeGreaterThanOrEqual(10);
+      expect(result.key1[2].metric).toBeLessThanOrEqual(40);
+    });
+
+    test('processes only keys in missingDates', () => {
+      const data = {
+        key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
+        key2: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 20 }],
+      };
+      const missingDates = { key1: ['2023-01-02T00:00:00.000Z'] };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(Object.keys(result)).toEqual(['key1']);
+      expect(result).toEqual({
+        key1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', metric: 10 },
+          { timestamp: '2023-01-02T00:00:00.000Z', metric: 10 },
+        ],
+      });
+    });
+
+    test('returns data when missingDates is empty', () => {
+      const data = { key1: [] };
+      const missingDates = {};
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toBe(data);
+    });
+
+    test('processes key with empty data array', () => {
+      const data = { key1: [] };
+      const missingDates = { key1: ['2023-01-01T00:00:00.000Z'] };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toEqual({ key1: [] });
+    });
+  });
 });
