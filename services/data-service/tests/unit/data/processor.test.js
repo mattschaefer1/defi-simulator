@@ -3060,3 +3060,100 @@ describe('Data Processing Functions', () => {
     });
   });
 });
+
+describe('getMetrics', () => {
+  test('should return empty object for empty inputs', () => {
+    const result = processor.getMetrics([], new Map());
+    expect(result).toEqual({});
+  });
+
+  test('should return empty object for invalid inputs', () => {
+    expect(processor.getMetrics(null, new Map())).toEqual({});
+    expect(processor.getMetrics([], null)).toEqual({});
+    expect(processor.getMetrics('not an array', new Map())).toEqual({});
+    expect(processor.getMetrics([], 'not a map')).toEqual({});
+  });
+
+  test('should correctly process valid records with metrics', () => {
+    const validDates = ['2024-01-01T00:00:00Z', '2024-01-02T00:00:00Z'];
+    const recordMap = new Map([
+      [
+        '2024-01-01T00:00:00Z',
+        { timestamp: '2024-01-01T00:00:00Z', price: 100, volume: 1000 },
+      ],
+      [
+        '2024-01-02T00:00:00Z',
+        { timestamp: '2024-01-02T00:00:00Z', price: 110, volume: 2000 },
+      ],
+    ]);
+
+    const result = processor.getMetrics(validDates, recordMap);
+    expect(result).toEqual({
+      price: [100, 110],
+      volume: [1000, 2000],
+    });
+  });
+
+  test('should handle missing records for some dates', () => {
+    const validDates = [
+      '2024-01-01T00:00:00Z',
+      '2024-01-02T00:00:00Z',
+      '2024-01-03T00:00:00Z',
+    ];
+    const recordMap = new Map([
+      [
+        '2024-01-01T00:00:00Z',
+        { timestamp: '2024-01-01T00:00:00Z', price: 100 },
+      ],
+      [
+        '2024-01-03T00:00:00Z',
+        { timestamp: '2024-01-03T00:00:00Z', price: 120 },
+      ],
+    ]);
+
+    const result = processor.getMetrics(validDates, recordMap);
+    expect(result).toEqual({
+      price: [100, 120],
+    });
+  });
+
+  test('should handle records with different metric keys', () => {
+    const validDates = ['2024-01-01T00:00:00Z', '2024-01-02T00:00:00Z'];
+    const recordMap = new Map([
+      [
+        '2024-01-01T00:00:00Z',
+        { timestamp: '2024-01-01T00:00:00Z', price: 100 },
+      ],
+      [
+        '2024-01-02T00:00:00Z',
+        { timestamp: '2024-01-02T00:00:00Z', volume: 2000 },
+      ],
+    ]);
+
+    const result = processor.getMetrics(validDates, recordMap);
+    expect(result).toEqual({
+      price: [100],
+      volume: [2000],
+    });
+  });
+
+  test('should ignore timestamp field in records', () => {
+    const validDates = ['2024-01-01T00:00:00Z'];
+    const recordMap = new Map([
+      [
+        '2024-01-01T00:00:00Z',
+        {
+          timestamp: '2024-01-01T00:00:00Z',
+          price: 100,
+          volume: 1000,
+        },
+      ],
+    ]);
+
+    const result = processor.getMetrics(validDates, recordMap);
+    expect(result).toEqual({
+      price: [100],
+      volume: [1000],
+    });
+  });
+});
