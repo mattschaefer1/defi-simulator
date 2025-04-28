@@ -3392,6 +3392,22 @@ describe('Data Processing Functions', () => {
       expect(result.key1[2].metric).toBeLessThanOrEqual(40);
     });
 
+    it('fills missing date with zero metrics when no nearby dates are found', () => {
+      const data = {
+        key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
+      };
+      const missingDates = {
+        key1: ['2023-01-15T00:00:00.000Z'],
+      };
+      const result = processor.fillMissingDates(data, missingDates);
+      expect(result).toEqual({
+        key1: [
+          { timestamp: '2023-01-01T00:00:00.000Z', metric: 10 },
+          { timestamp: '2023-01-15T00:00:00.000Z', metric: 0 },
+        ],
+      });
+    });
+
     it('processes only keys in missingDates', () => {
       const data = {
         key1: [{ timestamp: '2023-01-01T00:00:00.000Z', metric: 10 }],
