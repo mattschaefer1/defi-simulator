@@ -105,6 +105,28 @@ describe('Data Fetching Functions', () => {
         'Successfully fetched data for 4 out of 5 pools.',
       );
     });
+
+    it('should handle invalid response format', async () => {
+      axios.get.mockResolvedValue({
+        data: { data: {} }, // Non-array data
+      });
+      const result = await fetchPoolData();
+      expect(result).toEqual({
+        lidoEth: null,
+        wethUsdc: null,
+        wbtcUsdc: null,
+        wbtcWeth: null,
+        daiUsdc: null,
+      });
+      expect(console.error).toHaveBeenCalledTimes(5); // Once for each pool
+      expect(console.error).toHaveBeenCalledWith(
+        'Error fetching APY and TVL data for lidoEth after retries:',
+        'Invalid response format',
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        'Successfully fetched data for 0 out of 5 pools.',
+      );
+    });
   });
 
   describe('fetchPriceData', () => {
