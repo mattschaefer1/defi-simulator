@@ -197,6 +197,27 @@ describe('Data Fetching Functions', () => {
         3,
       );
     });
+
+    it('should handle invalid response format', async () => {
+      axios.get.mockResolvedValue({
+        data: { data: {} }, // Non-array data
+      });
+      const result = await fetchPriceData();
+      expect(result).toEqual({
+        weth: null,
+        wbtc: null,
+        dai: null,
+        usdc: null,
+      });
+      expect(console.error).toHaveBeenCalledTimes(4); // Once for each token
+      expect(console.error).toHaveBeenCalledWith(
+        'Error fetching price data for weth after retries:',
+        'Invalid prices format',
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        'Successfully fetched price data for 0 out of 4 tokens.',
+      );
+    });
   });
 
   describe('fetchUniswapPoolData', () => {
@@ -274,6 +295,27 @@ describe('Data Fetching Functions', () => {
       const result = await fetchUniswapPoolData();
       expect(Object.values(result).filter((data) => data !== null).length).toBe(
         3,
+      );
+    });
+
+    it('should handle invalid response format', async () => {
+      request.mockResolvedValue({
+        data: { data: {} }, // Non-array data
+      });
+      const result = await fetchUniswapPoolData();
+      expect(result).toEqual({
+        wethUsdc: null,
+        wbtcUsdc: null,
+        wbtcWeth: null,
+        daiUsdc: null,
+      });
+      expect(console.error).toHaveBeenCalledTimes(4); // Once for each pool
+      expect(console.error).toHaveBeenCalledWith(
+        'Error fetching Uniswap pool data for wethUsdc after retries:',
+        'Invalid poolDayDatas format',
+      );
+      expect(console.log).toHaveBeenCalledWith(
+        'Successfully fetched Uniswap data for 0 out of 4 pools.',
       );
     });
   });
