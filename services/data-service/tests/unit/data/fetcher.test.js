@@ -23,10 +23,10 @@ jest.mock('graphql-request', () => ({
 }));
 jest.mock('../../../src/utils/retry', () => (fn) => fn());
 
-// Mock console methods to verify logging
-console.log = jest.fn();
-console.warn = jest.fn();
-console.error = jest.fn();
+// Spy on console methods
+const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
 describe('Data Fetching Functions', () => {
   describe('fetchPoolData', () => {
@@ -50,7 +50,9 @@ describe('Data Fetching Functions', () => {
       jest.spyOn(Object, 'keys').mockReturnValueOnce([]);
       const result = await fetchPoolData();
       expect(result).toEqual({});
-      expect(console.warn).toHaveBeenCalledWith('No pools to fetch data for.');
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'No pools to fetch data for.',
+      );
     });
 
     it('should fetch data successfully', async () => {
@@ -65,8 +67,10 @@ describe('Data Fetching Functions', () => {
         wbtcWeth: [{ timestamp: 1, tvlUsd: 100, apy: 5 }],
         daiUsdc: [{ timestamp: 1, tvlUsd: 100, apy: 5 }],
       });
-      expect(console.log).toHaveBeenCalledWith('Fetching data for 5 pools...');
-      expect(console.log).toHaveBeenCalledWith(
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Fetching data for 5 pools...',
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         'Successfully fetched data for 5 out of 5 pools.',
       );
     });
@@ -81,8 +85,8 @@ describe('Data Fetching Functions', () => {
         wbtcWeth: null,
         daiUsdc: null,
       });
-      expect(console.error).toHaveBeenCalledTimes(5);
-      expect(console.log).toHaveBeenCalledWith(
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(5);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         'Successfully fetched data for 0 out of 5 pools.',
       );
     });
@@ -100,8 +104,8 @@ describe('Data Fetching Functions', () => {
       expect(Object.values(result).filter((data) => data !== null).length).toBe(
         4,
       );
-      expect(console.error).toHaveBeenCalledTimes(1);
-      expect(console.log).toHaveBeenCalledWith(
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         'Successfully fetched data for 4 out of 5 pools.',
       );
     });
@@ -118,12 +122,12 @@ describe('Data Fetching Functions', () => {
         wbtcWeth: null,
         daiUsdc: null,
       });
-      expect(console.error).toHaveBeenCalledTimes(5); // Once for each pool
-      expect(console.error).toHaveBeenCalledWith(
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(5); // Once for each pool
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error fetching APY and TVL data for lidoEth after retries:',
         'Invalid response format',
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         'Successfully fetched data for 0 out of 5 pools.',
       );
     });
@@ -153,7 +157,9 @@ describe('Data Fetching Functions', () => {
       jest.spyOn(Object, 'keys').mockReturnValueOnce([]);
       const result = await fetchPriceData();
       expect(result).toEqual({});
-      expect(console.warn).toHaveBeenCalledWith('No tokens to fetch data for.');
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'No tokens to fetch data for.',
+      );
     });
 
     it('should fetch data successfully', async () => {
@@ -184,7 +190,7 @@ describe('Data Fetching Functions', () => {
         dai: null,
         usdc: null,
       });
-      expect(console.error).toHaveBeenCalledTimes(4);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(4);
     });
 
     it('should handle partial success', async () => {
@@ -209,12 +215,12 @@ describe('Data Fetching Functions', () => {
         dai: null,
         usdc: null,
       });
-      expect(console.error).toHaveBeenCalledTimes(4); // Once for each token
-      expect(console.error).toHaveBeenCalledWith(
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(4); // Once for each token
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error fetching price data for weth after retries:',
         'Invalid prices format',
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         'Successfully fetched price data for 0 out of 4 tokens.',
       );
     });
@@ -242,7 +248,7 @@ describe('Data Fetching Functions', () => {
       jest.spyOn(Object, 'keys').mockReturnValueOnce([]);
       const result = await fetchUniswapPoolData();
       expect(result).toEqual({});
-      expect(console.warn).toHaveBeenCalledWith(
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
         'No pools to fetch Uniswap data for.',
       );
     });
@@ -276,7 +282,7 @@ describe('Data Fetching Functions', () => {
         wbtcWeth: null,
         daiUsdc: null,
       });
-      expect(console.error).toHaveBeenCalledTimes(4);
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(4);
     });
 
     it('should handle partial success', async () => {
@@ -309,12 +315,12 @@ describe('Data Fetching Functions', () => {
         wbtcWeth: null,
         daiUsdc: null,
       });
-      expect(console.error).toHaveBeenCalledTimes(4); // Once for each pool
-      expect(console.error).toHaveBeenCalledWith(
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(4); // Once for each pool
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error fetching Uniswap pool data for wethUsdc after retries:',
         'Invalid poolDayDatas format',
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(consoleLogSpy).toHaveBeenCalledWith(
         'Successfully fetched Uniswap data for 0 out of 4 pools.',
       );
     });
