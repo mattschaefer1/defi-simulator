@@ -4,7 +4,6 @@ import {
   saveLiquidityPoolData,
 } from '../../../src/data/saver.js';
 
-// Mock the database models
 const mockCreate = jest.fn();
 const app = {
   locals: {
@@ -16,7 +15,6 @@ const app = {
   },
 };
 
-// Spy on console methods
 const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
 const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();

@@ -2,7 +2,6 @@ import { Op } from 'sequelize';
 import router from '../../../src/routes/dataRoutes.js';
 import { poolAddresses, tokenAddresses } from '../../../src/config/pools.js';
 
-// Suppress console.error to avoid cluttering test output
 beforeAll(() => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -11,7 +10,6 @@ afterAll(() => {
   jest.restoreAllMocks();
 });
 
-// Helper function to extract route handler
 function getHandler(path) {
   const layer = router.stack.find((l) => l.route && l.route.path === path);
   if (!layer) throw new Error(`Route ${path} not found`);

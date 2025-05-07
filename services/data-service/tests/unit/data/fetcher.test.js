@@ -6,10 +6,8 @@ import {
   fetchUniswapPoolData,
 } from '../../../src/data/fetcher.js';
 
-// Mock external dependencies
 jest.mock('../../../src/utils/retry', () => (fn) => fn());
 
-// Spy on console methods
 const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
 const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
