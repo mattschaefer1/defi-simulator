@@ -31,16 +31,21 @@ async function loadModels() {
 }
 
 export async function setupTestEnvironment() {
-  container = await new GenericContainer('postgres:13')
-    .withEnvironment({
-      POSTGRES_USER: 'postgres',
-      POSTGRES_PASSWORD: 'postgres',
-      POSTGRES_DB: 'defi_simulator_test',
-    })
-    .withExposedPorts(5432)
-    .start();
-
-  process.env.DB_URL = `postgres://postgres:postgres@localhost:${container.getMappedPort(5432)}/defi_simulator_test`;
+  try {
+    container = await new GenericContainer('postgres:13')
+      .withEnvironment({
+        POSTGRES_USER: 'postgres',
+        POSTGRES_PASSWORD: 'postgres',
+        POSTGRES_DB: 'defi_simulator_test',
+      })
+      .withExposedPorts(5432)
+      .start();
+    process.env.DB_URL = `postgres://postgres:postgres@localhost:${container.getMappedPort(5432)}/defi_simulator_test`;
+  } catch (error) {
+    console.warn('Testcontainers failed, using local PostgreSQL:', error);
+    process.env.DB_URL =
+      'postgres://postgres:postgres@localhost:5432/defi_simulator_test';
+  }
 
   await loadModels();
 
@@ -49,11 +54,19 @@ export async function setupTestEnvironment() {
 }
 
 export async function teardownTestEnvironment() {
-  if (container) {
-    await container.stop();
-  }
-  if (sequelize) {
-    await sequelize.close();
+  try {
+    const { stopServer } = await import('../app.js');
+    stopServer();
+    if (container) {
+      await container.stop();
+      container = null;
+    }
+    if (sequelize) {
+      await sequelize.close();
+      sequelize = null;
+    }
+  } catch (error) {
+    console.error('Error during teardown:', error);
   }
 }
 
@@ -187,7 +200,10 @@ export function mockExternalApis() {
 export const testClient = { request: null };
 
 export async function initializeApp() {
+  await loadModels();
   const { default: expressApp } = await import('../app.js');
+  expressApp.locals.models = models;
+  expressApp.locals.sequelize = sequelize;
   testClient.request = supertest(expressApp);
   return expressApp;
 }
