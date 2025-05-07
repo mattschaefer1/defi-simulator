@@ -88,7 +88,7 @@ export async function seedTestData() {
     },
     {
       timestamp: '2023-01-02T00:00:00.000Z',
-      apy_percentage: 5.25,
+      apy_percentage: 5.26,
     },
   ]);
 
@@ -96,7 +96,7 @@ export async function seedTestData() {
     {
       timestamp: '2023-01-01T00:00:00.000Z',
       token_symbol: 'WETH',
-      price_usd: 1200.123456,
+      price_usd: 1200.123457,
     },
     {
       timestamp: '2023-01-02T00:00:00.000Z',
@@ -109,15 +109,15 @@ export async function seedTestData() {
     {
       timestamp: '2023-01-01T00:00:00.000Z',
       pool_address: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
-      tvl_usd: 1000000.123456,
+      tvl_usd: 1000000.123457,
       volume_24h_usd: 500000.654321,
-      fees_24h_usd: 1500.123456,
+      fees_24h_usd: 1500.123457,
     },
     {
       timestamp: '2023-01-02T00:00:00.000Z',
       pool_address: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
       tvl_usd: 1010000.987654,
-      volume_24h_usd: 510000.123456,
+      volume_24h_usd: 510000.123457,
       fees_24h_usd: 1520.654321,
     },
   ]);
@@ -144,8 +144,8 @@ export function mockExternalApis() {
       return {
         data: {
           data: [
-            { timestamp: '2023-01-01', apy: 5.123, tvlUsd: 1000000 },
-            { timestamp: '2023-01-02', apy: 5.256, tvlUsd: 1010000 },
+            { timestamp: '2023-01-01', apy: 5.123, tvlUsd: 1000000.1234567 },
+            { timestamp: '2023-01-02', apy: 5.256, tvlUsd: 1010000.9876543 },
           ],
         },
       };
@@ -154,7 +154,7 @@ export function mockExternalApis() {
       return {
         data: {
           prices: [
-            [1672531200000, 1200.123456], // 2023-01-01
+            [1672531200000, 1200.1234567], // 2023-01-01
             [1672617600000, 1210.654321], // 2023-01-02
           ],
         },
@@ -169,13 +169,13 @@ export function mockExternalApis() {
         poolDayDatas: [
           {
             date: 1672531200, // 2023-01-01
-            feesUSD: '1500.123456',
-            volumeUSD: '500000.654321',
+            feesUSD: '1500.1234567',
+            volumeUSD: '500000.6543210',
           },
           {
             date: 1672617600, // 2023-01-02
-            feesUSD: '1520.654321',
-            volumeUSD: '510000.123456',
+            feesUSD: '1520.6543210',
+            volumeUSD: '510000.1234567',
           },
         ],
       };
