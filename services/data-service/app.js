@@ -9,78 +9,69 @@ import retry from './src/utils/retry.js';
 const app = express();
 const PORT = process.env.DATA_SERVICE_PORT || 3001;
 
-// Middleware
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Make models available to routes
-app.locals.models = models;
-
-// Database connection with retry logic
-const connectToDatabase = async () => {
-  await retry(
-    async () => {
-      await sequelize.authenticate();
-      console.log('Connected to TimescaleDB');
-    },
-    { verbose: true, retries: 5, initialDelay: 5000 },
-  );
-};
-
-// Routes
 app.use('/api/data', dataRoutes);
 
-// Fetch and save data to database (Daily at 1:00 AM UTC)
 let isRunning = false;
-cron.schedule(
-  '0 1 * * *',
-  async () => {
-    if (isRunning) {
-      console.log('Previous run still in progress, skipping...');
-      return;
-    }
+let cronJob;
 
-    isRunning = true;
-    const startTime = Date.now();
-    console.log(
-      `Starting data fetch at ${new Date(startTime).toISOString()}...`,
-    );
+if (process.env.NODE_ENV !== 'test') {
+  cronJob = cron.schedule(
+    '0 1 * * *',
+    async () => {
+      if (isRunning) {
+        console.log('Previous run still in progress, skipping...');
+        return;
+      }
 
-    try {
-      await dataHandler(app);
-      const endTime = Date.now();
+      isRunning = true;
+      const startTime = Date.now();
       console.log(
-        `Data fetch completed successfully in ${(endTime - startTime) / 1000} seconds.`,
+        `Starting data fetch at ${new Date(startTime).toISOString()}...`,
       );
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      isRunning = false;
-    }
-  },
-  {
-    scheduled: true,
-    timezone: 'Etc/UTC',
-  },
-);
 
-// Error handling middleware
-app.use((err, req, res) => {
+      try {
+        await dataHandler(app);
+        const endTime = Date.now();
+        console.log(
+          `Data fetch completed successfully in ${(endTime - startTime) / 1000} seconds.`,
+        );
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        isRunning = false;
+      }
+    },
+    {
+      scheduled: true,
+      timezone: 'Etc/UTC',
+    },
+  );
+}
+
+app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal server error' });
+  next();
 });
 
-// Start the server with seeding
-async function startServer() {
+export async function startServer() {
   try {
-    // Connect to database with retry logic
-    await connectToDatabase();
+    await retry(
+      async () => {
+        await sequelize.authenticate();
+        console.log('Connected to TimescaleDB');
+      },
+      { verbose: true, retries: 5, initialDelay: 5000 },
+    );
 
-    // Ensure database schema is synced
     await sequelize.sync();
     console.log('Database schema synced');
 
-    // Check if the database is empty
+    app.locals.models = models;
+
     if (
       !app.locals.models?.ETHStakingHistorical ||
       !app.locals.models?.TokenPrice ||
@@ -106,15 +97,24 @@ async function startServer() {
       console.log('Database already contains data, skipping seeding');
     }
 
-    // Start the server
     app.listen(PORT, () => {
       console.log(`Data Service running on port ${PORT}`);
     });
   } catch (error) {
     console.error('Error during startup:', error);
-    process.exit(1);
+    throw error;
   }
 }
 
-// Initiate server startup
-startServer();
+export function stopServer() {
+  if (cronJob) {
+    cronJob.stop();
+    cronJob = null;
+  }
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+export default app;
