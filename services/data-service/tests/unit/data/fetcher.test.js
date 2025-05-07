@@ -7,20 +7,6 @@ import {
 } from '../../../src/data/fetcher.js';
 
 // Mock external dependencies
-jest.mock('axios');
-jest.mock('graphql-request', () => ({
-  request: jest.fn(),
-  gql: jest.fn().mockImplementation((strings, ...values) => {
-    let result = '';
-    strings.forEach((str, i) => {
-      result += str;
-      if (i < values.length) {
-        result += values[i];
-      }
-    });
-    return result;
-  }),
-}));
 jest.mock('../../../src/utils/retry', () => (fn) => fn());
 
 // Spy on console methods
