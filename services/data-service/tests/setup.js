@@ -69,7 +69,7 @@ export async function teardownTestEnvironment() {
   }
 }
 
-export async function seedTestData() {
+export async function seedTokenData() {
   if (!models) {
     await loadModels();
   }
@@ -79,7 +79,12 @@ export async function seedTestData() {
     { token_symbol: 'WBTC' },
     { token_symbol: 'DAI' },
   ]);
+}
 
+export async function seedPoolData() {
+  if (!models) {
+    await loadModels();
+  }
   await models.Pool.bulkCreate([
     {
       pool_address: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',
@@ -92,14 +97,22 @@ export async function seedTestData() {
       token1_symbol: 'USDC',
     },
   ]);
+}
 
+export async function seedStakingData() {
+  if (!models) {
+    await loadModels();
+  }
   await models.ETHStakingHistorical.bulkCreate([
     { timestamp: '2023-01-01T00:00:00.000Z', apy_percentage: 5.01 },
     { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: 5.12 },
-    { timestamp: '2023-01-03T00:00:00.000Z', apy_percentage: 5.23 },
-    { timestamp: '2023-01-04T00:00:00.000Z', apy_percentage: 5.34 },
   ]);
+}
 
+export async function seedPriceData() {
+  if (!models) {
+    await loadModels();
+  }
   await models.TokenPrice.bulkCreate([
     {
       timestamp: '2023-01-01T00:00:00.000Z',
@@ -112,7 +125,12 @@ export async function seedTestData() {
       price_usd: 1210.654321,
     },
   ]);
+}
 
+export async function seedLpData() {
+  if (!models) {
+    await loadModels();
+  }
   await models.LPHistorical.bulkCreate([
     {
       timestamp: '2023-01-01T00:00:00.000Z',

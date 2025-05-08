@@ -1,7 +1,9 @@
 import {
   setupTestEnvironment,
   teardownTestEnvironment,
-  seedTestData,
+  seedTokenData,
+  seedPoolData,
+  seedLpData,
   initializeApp,
   testClient,
 } from '../../setup.js';
@@ -23,7 +25,9 @@ describe('GET /api/data/pool', () => {
   });
 
   it('should retrieve pool data for valid address without date filters', async () => {
-    await seedTestData();
+    await seedTokenData();
+    await seedPoolData();
+    await seedLpData();
 
     const response = await testClient.request
       .get('/api/data/pool')
@@ -51,7 +55,9 @@ describe('GET /api/data/pool', () => {
   });
 
   it('should retrieve pool data with valid start and end dates', async () => {
-    await seedTestData();
+    await seedTokenData();
+    await seedPoolData();
+    await seedLpData();
 
     const response = await testClient.request.get('/api/data/pool').query({
       address: '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640',

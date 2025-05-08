@@ -1,7 +1,8 @@
 import {
   setupTestEnvironment,
   teardownTestEnvironment,
-  seedTestData,
+  seedTokenData,
+  seedPoolData,
   initializeApp,
   testClient,
 } from '../../setup.js';
@@ -23,7 +24,8 @@ describe('GET /api/data/pools', () => {
   });
 
   it('should return all pools when data is present', async () => {
-    await seedTestData();
+    await seedTokenData();
+    await seedPoolData();
 
     const response = await testClient.request.get('/api/data/pools');
 

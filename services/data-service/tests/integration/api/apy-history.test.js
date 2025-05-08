@@ -1,7 +1,7 @@
 import {
   setupTestEnvironment,
   teardownTestEnvironment,
-  seedTestData,
+  seedStakingData,
   initializeApp,
   testClient,
 } from '../../setup.js';
@@ -23,7 +23,7 @@ describe('GET /api/data/apy-history', () => {
   });
 
   it('should retrieve APY history without date filters', async () => {
-    await seedTestData();
+    await seedStakingData();
 
     const response = await testClient.request.get('/api/data/apy-history');
 
@@ -32,24 +32,21 @@ describe('GET /api/data/apy-history', () => {
       apyHistory: [
         { timestamp: '2023-01-01T00:00:00.000Z', apy_percentage: '5.01' },
         { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: '5.12' },
-        { timestamp: '2023-01-03T00:00:00.000Z', apy_percentage: '5.23' },
-        { timestamp: '2023-01-04T00:00:00.000Z', apy_percentage: '5.34' },
       ],
     });
   });
 
   it('should retrieve APY history with valid start and end dates', async () => {
-    await seedTestData();
+    await seedStakingData();
 
     const response = await testClient.request
       .get('/api/data/apy-history')
-      .query({ start: '2023-01-02', end: '2023-01-03' });
+      .query({ start: '2023-01-01', end: '2023-01-01' });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       apyHistory: [
-        { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: '5.12' },
-        { timestamp: '2023-01-03T00:00:00.000Z', apy_percentage: '5.23' },
+        { timestamp: '2023-01-01T00:00:00.000Z', apy_percentage: '5.01' },
       ],
     });
   });

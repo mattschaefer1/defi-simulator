@@ -1,7 +1,8 @@
 import {
   setupTestEnvironment,
   teardownTestEnvironment,
-  seedTestData,
+  seedTokenData,
+  seedPriceData,
   initializeApp,
   testClient,
 } from '../../setup.js';
@@ -23,7 +24,8 @@ describe('GET /api/data/price-history', () => {
   });
 
   it('should retrieve price history for valid token without date filters', async () => {
-    await seedTestData();
+    await seedTokenData();
+    await seedPriceData();
 
     const response = await testClient.request
       .get('/api/data/price-history')
@@ -47,7 +49,8 @@ describe('GET /api/data/price-history', () => {
   });
 
   it('should retrieve price history with valid start and end dates', async () => {
-    await seedTestData();
+    await seedTokenData();
+    await seedPriceData();
 
     const response = await testClient.request
       .get('/api/data/price-history')
