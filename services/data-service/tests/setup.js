@@ -2,6 +2,7 @@ import { GenericContainer } from 'testcontainers';
 import supertest from 'supertest';
 import axios from 'axios';
 import { request } from 'graphql-request';
+import { poolIds } from '../src/config/pools.js';
 
 process.env.NODE_ENV = 'test';
 process.env.DB_URL =
@@ -47,6 +48,11 @@ export async function setupTestEnvironment() {
   }
 
   await loadModels();
+
+  process.env.DEFILLAMA_API_URL = 'http://mock-defillama.com/';
+  process.env.COINGECKO_API_URL = 'http://mock-coingecko.com/';
+  process.env.COINGECKO_API_KEY = 'mock-key';
+  process.env.GRAPH_API_URL = 'http://mock-graph.com/';
 
   await sequelize.authenticate();
   await sequelize.sync({ force: true });
@@ -166,17 +172,25 @@ jest.mock('graphql-request', () => ({
 
 export function mockExternalApis() {
   axios.get.mockImplementation(async (url) => {
-    if (url.includes('DEFILLAMA_API_URL')) {
-      return {
-        data: {
-          data: [
-            { timestamp: '2023-01-01', apy: 5.012, tvlUsd: 1000000.1234567 },
-            { timestamp: '2023-01-02', apy: 5.123, tvlUsd: 1010000.9876543 },
-          ],
-        },
-      };
+    if (url.startsWith(process.env.DEFILLAMA_API_URL)) {
+      const poolId = url.split('/').pop();
+      if (
+        poolId === poolIds.wethUsdc ||
+        poolId === poolIds.wbtcUsdc ||
+        poolId === poolIds.lidoEth
+      ) {
+        return {
+          data: {
+            data: [
+              { timestamp: '2023-01-01', apy: 5.012, tvlUsd: 1000000.1234567 },
+              { timestamp: '2023-01-02', apy: 5.123, tvlUsd: 1010000.9876543 },
+            ],
+          },
+        };
+      }
+      return { data: { data: [] } };
     }
-    if (url.includes('COINGECKO_API_URL')) {
+    if (url.startsWith(process.env.COINGECKO_API_URL)) {
       return {
         data: {
           prices: [
@@ -189,22 +203,29 @@ export function mockExternalApis() {
     throw new Error(`Unexpected URL: ${url}`);
   });
 
-  request.mockImplementation(async (url) => {
-    if (url.includes('GRAPH_API_URL')) {
-      return {
-        poolDayDatas: [
-          {
-            date: 1672531200, // 2023-01-01
-            feesUSD: '1500.1234567',
-            volumeUSD: '500000.6543210',
-          },
-          {
-            date: 1672617600, // 2023-01-02
-            feesUSD: '1520.6543210',
-            volumeUSD: '510000.1234567',
-          },
-        ],
-      };
+  request.mockImplementation(async (url, query) => {
+    if (url === process.env.GRAPH_API_URL) {
+      const address = query.match(/pool: "([^"]+)"/)?.[1];
+      if (
+        address === '0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640' ||
+        address === '0x99ac8ca7087fa4a2a1fb6357269965a2014abc35'
+      ) {
+        return {
+          poolDayDatas: [
+            {
+              date: 1672531200, // 2023-01-01
+              feesUSD: '1500.1234567',
+              volumeUSD: '500000.6543210',
+            },
+            {
+              date: 1672617600, // 2023-01-02
+              feesUSD: '1520.6543210',
+              volumeUSD: '510000.1234567',
+            },
+          ],
+        };
+      }
+      return { poolDayDatas: [] };
     }
     throw new Error(`Unexpected GraphQL URL: ${url}`);
   });
