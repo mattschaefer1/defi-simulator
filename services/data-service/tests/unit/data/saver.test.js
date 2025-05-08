@@ -125,9 +125,15 @@ describe('Data Saving Functions', () => {
       const unexpectedError = new Error('Unexpected error');
       mockCreate.mockRejectedValueOnce(unexpectedError);
 
-      await saveStakingData(apyData, app);
+      await expect(saveStakingData(apyData, app)).rejects.toThrow(
+        'Unexpected error',
+      );
 
       expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(mockCreate).toHaveBeenCalledWith({
+        timestamp: '2023-01-01',
+        apy_percentage: 5.0,
+      });
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error inserting staking record:',
         unexpectedError,
@@ -265,9 +271,16 @@ describe('Data Saving Functions', () => {
       const unexpectedError = new Error('Unexpected error');
       mockCreate.mockRejectedValueOnce(unexpectedError);
 
-      await saveTokenPriceData(priceData, app);
+      await expect(saveTokenPriceData(priceData, app)).rejects.toThrow(
+        'Unexpected error',
+      );
 
       expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(mockCreate).toHaveBeenCalledWith({
+        timestamp: '2023-01-01',
+        token_symbol: 'ETH',
+        price_usd: 1500,
+      });
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error inserting token price record:',
         unexpectedError,
@@ -437,9 +450,18 @@ describe('Data Saving Functions', () => {
       const unexpectedError = new Error('Unexpected error');
       mockCreate.mockRejectedValueOnce(unexpectedError);
 
-      await saveLiquidityPoolData(liquidityPoolData, app);
+      await expect(
+        saveLiquidityPoolData(liquidityPoolData, app),
+      ).rejects.toThrow('Unexpected error');
 
       expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(mockCreate).toHaveBeenCalledWith({
+        timestamp: '2023-01-01',
+        pool_address: '0x123',
+        tvl_usd: 1000000,
+        volume_24h_usd: 50000,
+        fees_24h_usd: 1000,
+      });
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Error inserting liquidity pool record:',
         unexpectedError,
