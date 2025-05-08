@@ -4,7 +4,6 @@ import axios from 'axios';
 import { request } from 'graphql-request';
 
 process.env.NODE_ENV = 'test';
-process.env.DATA_SERVICE_PORT = '3001';
 process.env.DB_URL =
   process.env.DB_URL ||
   'postgres://postgres:postgres@localhost:5432/defi_simulator_test';
@@ -95,14 +94,10 @@ export async function seedTestData() {
   ]);
 
   await models.ETHStakingHistorical.bulkCreate([
-    {
-      timestamp: '2023-01-01T00:00:00.000Z',
-      apy_percentage: 5.12,
-    },
-    {
-      timestamp: '2023-01-02T00:00:00.000Z',
-      apy_percentage: 5.26,
-    },
+    { timestamp: '2023-01-01T00:00:00.000Z', apy_percentage: 5.01 },
+    { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: 5.12 },
+    { timestamp: '2023-01-03T00:00:00.000Z', apy_percentage: 5.23 },
+    { timestamp: '2023-01-04T00:00:00.000Z', apy_percentage: 5.34 },
   ]);
 
   await models.TokenPrice.bulkCreate([
@@ -157,8 +152,8 @@ export function mockExternalApis() {
       return {
         data: {
           data: [
-            { timestamp: '2023-01-01', apy: 5.123, tvlUsd: 1000000.1234567 },
-            { timestamp: '2023-01-02', apy: 5.256, tvlUsd: 1010000.9876543 },
+            { timestamp: '2023-01-01', apy: 5.012, tvlUsd: 1000000.1234567 },
+            { timestamp: '2023-01-02', apy: 5.123, tvlUsd: 1010000.9876543 },
           ],
         },
       };

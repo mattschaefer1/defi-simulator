@@ -1,6 +1,7 @@
 import {
   setupTestEnvironment,
   teardownTestEnvironment,
+  seedTestData,
   initializeApp,
   testClient,
 } from '../../setup.js';
@@ -22,29 +23,23 @@ describe('GET /api/data/apy-history', () => {
   });
 
   it('should retrieve APY history without date filters', async () => {
-    await app.locals.models.ETHStakingHistorical.bulkCreate([
-      { timestamp: '2023-01-01T00:00:00.000Z', apy_percentage: 5.12 },
-      { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: 5.26 },
-    ]);
+    await seedTestData();
 
     const response = await testClient.request.get('/api/data/apy-history');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       apyHistory: [
-        { timestamp: '2023-01-01T00:00:00.000Z', apy_percentage: '5.12' },
-        { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: '5.26' },
+        { timestamp: '2023-01-01T00:00:00.000Z', apy_percentage: '5.01' },
+        { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: '5.12' },
+        { timestamp: '2023-01-03T00:00:00.000Z', apy_percentage: '5.23' },
+        { timestamp: '2023-01-04T00:00:00.000Z', apy_percentage: '5.34' },
       ],
     });
   });
 
   it('should retrieve APY history with valid start and end dates', async () => {
-    await app.locals.models.ETHStakingHistorical.bulkCreate([
-      { timestamp: '2023-01-01T00:00:00.000Z', apy_percentage: 5.0 },
-      { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: 5.1 },
-      { timestamp: '2023-01-03T00:00:00.000Z', apy_percentage: 5.2 },
-      { timestamp: '2023-01-04T00:00:00.000Z', apy_percentage: 5.3 },
-    ]);
+    await seedTestData();
 
     const response = await testClient.request
       .get('/api/data/apy-history')
@@ -53,8 +48,8 @@ describe('GET /api/data/apy-history', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       apyHistory: [
-        { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: '5.10' },
-        { timestamp: '2023-01-03T00:00:00.000Z', apy_percentage: '5.20' },
+        { timestamp: '2023-01-02T00:00:00.000Z', apy_percentage: '5.12' },
+        { timestamp: '2023-01-03T00:00:00.000Z', apy_percentage: '5.23' },
       ],
     });
   });
