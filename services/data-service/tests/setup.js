@@ -42,9 +42,8 @@ export async function setupTestEnvironment() {
       .start();
     process.env.DB_URL = `postgres://postgres:postgres@localhost:${container.getMappedPort(5432)}/defi_simulator_test`;
   } catch (error) {
-    console.warn('Testcontainers failed, using local PostgreSQL:', error);
-    process.env.DB_URL =
-      'postgres://postgres:postgres@localhost:5432/defi_simulator_test';
+    console.error('Failed to start PostgreSQL Testcontainer:', error);
+    throw error;
   }
 
   await loadModels();
