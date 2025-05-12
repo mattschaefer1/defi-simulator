@@ -11,6 +11,8 @@ import * as fetcher from '../../src/data/fetcher.js';
 
 describe('dataHandler Integration Tests', () => {
   let app;
+  let consoleLogSpy;
+  let consoleErrorSpy;
 
   beforeAll(async () => {
     await setupTestEnvironment();
@@ -26,6 +28,14 @@ describe('dataHandler Integration Tests', () => {
     await app.locals.sequelize.sync({ force: true });
     await seedTokenData();
     await seedPoolData();
+
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+  });
+
+  afterEach(async () => {
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
   });
 
   it('should successfully fetch, process, and save data', async () => {
@@ -51,7 +61,7 @@ describe('dataHandler Integration Tests', () => {
     expect(typeof lpHistoricalData[0].tvl_usd).toBe('string');
     expect(lpHistoricalData[0].tvl_usd).toMatch(/^\d+\.\d+$/);
 
-    expect(console.log).toHaveBeenCalledWith('All data saved successfully');
+    expect(consoleLogSpy).toHaveBeenCalledWith('All data saved successfully');
   });
 
   it('should handle duplicate timestamps by saving only the last occurrence', async () => {
@@ -150,7 +160,7 @@ describe('dataHandler Integration Tests', () => {
     expect(tokenPriceData.length).toBe(0);
     expect(lpHistoricalData.length).toBe(0);
 
-    expect(console.error).toHaveBeenCalledWith(
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
       'Error in dataHandler:',
       expect.any(Error),
     );
@@ -162,7 +172,7 @@ describe('dataHandler Integration Tests', () => {
 
     await expect(dataHandler(app)).rejects.toThrow('Database model');
 
-    expect(console.error).toHaveBeenCalledWith(
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
       'Error in dataHandler:',
       expect.any(Error),
     );
@@ -185,7 +195,7 @@ describe('dataHandler Integration Tests', () => {
     expect(tokenPriceData.length).toBe(0);
     expect(lpHistoricalData.length).toBe(0);
 
-    expect(console.log).toHaveBeenCalledWith('All data saved successfully');
+    expect(consoleLogSpy).toHaveBeenCalledWith('All data saved successfully');
   });
 
   it('should log and rethrow error when saving token price data fails', async () => {
@@ -193,7 +203,6 @@ describe('dataHandler Integration Tests', () => {
     app.locals.models.TokenPrice.create = jest
       .fn()
       .mockRejectedValue(new Error('TokenPrice save error'));
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
     await expect(dataHandler(app)).rejects.toThrow('TokenPrice save error');
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -202,7 +211,6 @@ describe('dataHandler Integration Tests', () => {
     );
 
     app.locals.models.TokenPrice.create = originalCreate;
-    consoleErrorSpy.mockRestore();
   });
 
   it('should log and rethrow error when saving liquidity pool data fails', async () => {
@@ -210,7 +218,6 @@ describe('dataHandler Integration Tests', () => {
     app.locals.models.LPHistorical.create = jest
       .fn()
       .mockRejectedValue(new Error('LPHistorical save error'));
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
     await expect(dataHandler(app)).rejects.toThrow('LPHistorical save error');
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -219,6 +226,5 @@ describe('dataHandler Integration Tests', () => {
     );
 
     app.locals.models.LPHistorical.create = originalCreate;
-    consoleErrorSpy.mockRestore();
   });
 });
