@@ -2,7 +2,6 @@ import express from 'express';
 import cron from 'node-cron';
 import morgan from 'morgan';
 import dataRoutes from './src/routes/dataRoutes.js';
-import { sequelize, models } from './src/models/index.js';
 import dataHandler from './src/data/handler.js';
 import retry from './src/utils/retry.js';
 
@@ -16,49 +15,64 @@ app.use('/api/data', dataRoutes);
 
 let isRunning = false;
 let cronJob;
+let server;
 
-if (process.env.NODE_ENV !== 'test') {
-  cronJob = cron.schedule(
-    '0 1 * * *',
-    async () => {
-      if (isRunning) {
-        console.log('Previous run still in progress, skipping...');
-        return;
-      }
+export async function runDataFetch() {
+  if (isRunning) {
+    console.log('Previous run still in progress, skipping...');
+    return;
+  }
 
-      isRunning = true;
-      const startTime = Date.now();
-      console.log(
-        `Starting data fetch at ${new Date(startTime).toISOString()}...`,
-      );
+  isRunning = true;
+  const startTime = Date.now();
+  console.log(`Starting data fetch at ${new Date(startTime).toISOString()}...`);
 
-      try {
-        await dataHandler(app);
-        const endTime = Date.now();
-        console.log(
-          `Data fetch completed successfully in ${(endTime - startTime) / 1000} seconds.`,
-        );
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        isRunning = false;
-      }
-    },
-    {
-      scheduled: true,
-      timezone: 'Etc/UTC',
-    },
-  );
+  try {
+    await dataHandler(app);
+    const endTime = Date.now();
+    console.log(
+      `Data fetch completed successfully in ${(endTime - startTime) / 1000} seconds.`,
+    );
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  } finally {
+    isRunning = false;
+  }
 }
 
-app.use((err, req, res, next) => {
+if (process.env.NODE_ENV !== 'test') {
+  cronJob = cron.schedule('0 1 * * *', runDataFetch, {
+    scheduled: true,
+    timezone: 'Etc/UTC',
+  });
+}
+
+export function errorHandler(err, req, res) {
   console.error(err.stack);
   res.status(500).json({ message: 'Internal server error' });
-  next();
-});
+}
+
+app.use(errorHandler);
+
+export function validateModels(models) {
+  if (
+    !models ||
+    !models.ETHStakingHistorical ||
+    !models.TokenPrice ||
+    !models.LPHistorical
+  ) {
+    throw new Error('Database models are not available');
+  }
+  return true;
+}
 
 export async function startServer() {
   try {
+    const { default: initializeModels } = await import('./src/models/index.js');
+    const { sequelize, models } = await initializeModels();
+    app.locals.sequelize = sequelize;
+    app.locals.models = models;
+
     await retry(
       async () => {
         await sequelize.authenticate();
@@ -70,15 +84,8 @@ export async function startServer() {
     await sequelize.sync();
     console.log('Database schema synced');
 
-    app.locals.models = models;
+    validateModels(app.locals.models);
 
-    if (
-      !app.locals.models?.ETHStakingHistorical ||
-      !app.locals.models?.TokenPrice ||
-      !app.locals.models?.LPHistorical
-    ) {
-      throw new Error('Database models are not available');
-    }
     const ethCount = await app.locals.models.ETHStakingHistorical.count();
     const priceCount = await app.locals.models.TokenPrice.count();
     const lpCount = await app.locals.models.LPHistorical.count();
@@ -97,9 +104,11 @@ export async function startServer() {
       console.log('Database already contains data, skipping seeding');
     }
 
-    app.listen(PORT, () => {
+    server = app.listen(PORT, () => {
       console.log(`Data Service running on port ${PORT}`);
     });
+
+    return server;
   } catch (error) {
     console.error('Error during startup:', error);
     throw error;
@@ -110,6 +119,11 @@ export function stopServer() {
   if (cronJob) {
     cronJob.stop();
     cronJob = null;
+  }
+
+  if (server) {
+    server.close();
+    server = null;
   }
 }
 
