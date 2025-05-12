@@ -5,6 +5,7 @@ import { request } from 'graphql-request';
 import { poolIds } from '../src/config/pools.js';
 
 process.env.NODE_ENV = 'test';
+process.env.DATA_SERVICE_PORT = 3001;
 process.env.DB_URL =
   process.env.DB_URL ||
   'postgres://postgres:postgres@localhost:5432/defi_simulator_test';
@@ -22,12 +23,13 @@ jest.setTimeout(10000);
 let container;
 let sequelize;
 let models;
-async function loadModels() {
-  const { sequelize: seq, models: mdl } = await import(
-    '../src/models/index.js'
-  );
+
+export async function loadModels() {
+  const { default: initializeModels } = await import('../src/models/index.js');
+  const { sequelize: seq, models: mdl } = await initializeModels();
   sequelize = seq;
   models = mdl;
+  return { sequelize, models };
 }
 
 export async function setupTestEnvironment() {

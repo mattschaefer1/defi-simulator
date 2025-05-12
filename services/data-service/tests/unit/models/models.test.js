@@ -1,5 +1,12 @@
 import { Sequelize, DataTypes } from 'sequelize';
-import { models, sequelize } from '../../../src/models/index.js';
+import { loadModels } from '../../setup.js';
+
+let sequelize;
+let models;
+
+beforeAll(async () => {
+  ({ sequelize, models } = await loadModels());
+});
 
 describe('Sequelize Models', () => {
   describe('Sequelize Instance', () => {
