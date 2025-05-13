@@ -758,7 +758,7 @@ describe('Data Processing Functions', () => {
     });
 
     it('should log an error if rawData is not an array', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
 
       processor.formatUniswapPoolData('not-an-array');
 

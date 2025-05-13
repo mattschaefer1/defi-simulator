@@ -146,7 +146,7 @@ export function formatPriceData(rawData) {
  */
 export function formatUniswapPoolData(rawData) {
   if (!Array.isArray(rawData)) {
-    console.error('rawData is not an array');
+    console.warn('rawData is not an array');
     return [];
   }
   const reversedData = [...rawData].reverse();
