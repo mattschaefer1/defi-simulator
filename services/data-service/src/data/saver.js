@@ -52,6 +52,7 @@ export function saveStakingData(apyData, app) {
                   );
                 } else {
                   console.error('Error inserting staking record:', error);
+                  throw error;
                 }
               }),
           ),
@@ -116,6 +117,7 @@ export function saveTokenPriceData(priceData, app) {
                   );
                 } else {
                   console.error('Error inserting token price record:', error);
+                  throw error;
                 }
               }),
           ),
@@ -189,6 +191,7 @@ export function saveLiquidityPoolData(liquidityPoolData, app) {
                     'Error inserting liquidity pool record:',
                     error,
                   );
+                  throw error;
                 }
               }),
           ),

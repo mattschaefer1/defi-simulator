@@ -6,7 +6,7 @@ import { poolAddresses } from '../config/pools.js';
  *                               Unix timestamp (in milliseconds).
  * @returns {string|null} ISO date string (UTC), or null if the input is invalid.
  */
-function convertToISOString(date) {
+export function convertToISOString(date) {
   if (typeof date !== 'string' && typeof date !== 'number') {
     console.warn(`Invalid date input type: ${typeof date}, value: ${date}`);
     return null;
@@ -21,11 +21,13 @@ function convertToISOString(date) {
  * @param {number} numOfPlaces - Number of decimal places (non-negative integer).
  * @returns {number|null} Rounded number, or null if inputs are invalid.
  */
-function roundToDecimal(num, numOfPlaces) {
+export function roundToDecimal(num, numOfPlaces) {
   if (
     typeof num !== 'number' ||
     !Number.isInteger(numOfPlaces) ||
-    numOfPlaces < 0
+    numOfPlaces < 0 ||
+    Number.isNaN(num) ||
+    !Number.isFinite(num)
   ) {
     console.warn(
       `Invalid inputs for rounding: num=${num}, numOfPlaces=${numOfPlaces}`,
@@ -39,58 +41,65 @@ function roundToDecimal(num, numOfPlaces) {
 /**
  * Formats raw daily pool data from DeFi Llama.
  * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string)
- *                                  and 'apy' (number).
- * @returns {Array<Object>} Processed daily APY data with 'timestamp' (ISO string) and
- *                          'apyPercentage'.
+ *                                  and either 'apy' or 'tvlUsd' (number).
+ * @param {Object} options - Configuration options for formatting
+ * @param {string} options.valueField - The field name to extract from the data ('apy' or 'tvlUsd')
+ * @param {string} options.outputField - The field name to use in the output
+ *                                      ('apyPercentage' or 'tvlUsd')
+ * @param {number} options.decimalPlaces - Number of decimal places to round to
+ * @returns {Array<Object>} Processed daily data with 'timestamp' (ISO string) and the
+ *                          specified output field or an empty array if the input is invalid.
  */
-function formatApyData(rawData) {
-  if (!Array.isArray(rawData)) {
-    console.error('rawData is not an array');
+export function formatPoolData(rawData, options) {
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    console.warn('options parameter is missing or not an object');
     return [];
   }
-  return rawData
-    .filter(
-      (day) =>
-        day && typeof day.timestamp === 'string' && typeof day.apy === 'number',
-    )
-    .map((day) => {
-      const timestamp = convertToISOString(day.timestamp.substring(0, 10));
-      const apyPercentage = roundToDecimal(day.apy, 2);
-      if (timestamp === null || apyPercentage === null) {
-        console.warn(`Invalid APY data: ${JSON.stringify(day)}`);
-        return null;
-      }
-      return { timestamp, apyPercentage };
-    })
-    .filter((item) => item !== null);
-}
 
-/**
- * Formats raw daily pool data from DeFi Llama.
- * @param {Array<Object>} rawData - Raw data array with objects containing 'timestamp' (string)
- *                                  and 'tvlUsd' (number).
- * @returns {Array<Object>} Processed daily TVL data with 'timestamp' (ISO string) and 'tvlUsd'.
- */
-function formatTvlData(rawData) {
-  if (!Array.isArray(rawData)) {
-    console.error('rawData is not an array');
+  const { valueField, outputField, decimalPlaces } = options;
+
+  if (!valueField || typeof valueField !== 'string') {
+    console.warn('options.valueField is missing or not a string');
     return [];
   }
+
+  if (!outputField || typeof outputField !== 'string') {
+    console.warn('options.outputField is missing or not a string');
+    return [];
+  }
+
+  if (
+    !decimalPlaces ||
+    typeof decimalPlaces !== 'number' ||
+    !Number.isInteger(decimalPlaces) ||
+    decimalPlaces < 0
+  ) {
+    console.warn(
+      'options.decimalPlaces is missing, not an integer, or negative',
+    );
+    return [];
+  }
+
+  if (!Array.isArray(rawData)) {
+    console.warn('rawData is not an array');
+    return [];
+  }
+
   return rawData
     .filter(
       (day) =>
         day &&
         typeof day.timestamp === 'string' &&
-        typeof day.tvlUsd === 'number',
+        typeof day[valueField] === 'number',
     )
     .map((day) => {
       const timestamp = convertToISOString(day.timestamp.substring(0, 10));
-      const tvlUsd = roundToDecimal(day.tvlUsd, 6);
-      if (timestamp === null || tvlUsd === null) {
-        console.warn(`Invalid TVL data: ${JSON.stringify(day)}`);
+      const value = roundToDecimal(day[valueField], decimalPlaces);
+      if (timestamp === null || value === null) {
+        console.warn(`Invalid ${valueField} data: ${JSON.stringify(day)}`);
         return null;
       }
-      return { timestamp, tvlUsd };
+      return { timestamp, [outputField]: value };
     })
     .filter((item) => item !== null);
 }
@@ -99,11 +108,12 @@ function formatTvlData(rawData) {
  * Formats raw daily token price data from CoinGecko.
  * @param {Array<Array<number>>} rawData - Raw price data array, each item is
  *                                         [timestamp (number), price (number)].
- * @returns {Array<Object>} Processed token price data with 'timestamp' (ISO string) and 'priceUsd'.
+ * @returns {Array<Object>} Processed token price data with 'timestamp' (ISO string) and 'priceUsd'
+ *                          or an empty array if the input is invalid.
  */
-function formatPriceData(rawData) {
+export function formatPriceData(rawData) {
   if (!Array.isArray(rawData)) {
-    console.error('rawData is not an array');
+    console.warn('rawData is not an array');
     return [];
   }
   return rawData
@@ -131,11 +141,12 @@ function formatPriceData(rawData) {
  * @param {Array<Object>} rawData - Raw data array with objects containing 'date' (number),
  *                                  'feesUSD' (string), 'volumeUSD' (string).
  * @returns {Array<Object>} Processed daily pool data arranged from oldest to most recent with
- *                          'timestamp', 'feesUSD', 'volumeUSD'.
+ *                          'timestamp', 'feesUSD', 'volumeUSD' or an empty array if the input
+ *                          is invalid.
  */
-function formatUniswapPoolData(rawData) {
+export function formatUniswapPoolData(rawData) {
   if (!Array.isArray(rawData)) {
-    console.error('rawData is not an array');
+    console.warn('rawData is not an array');
     return [];
   }
   const reversedData = [...rawData].reverse();
@@ -165,20 +176,39 @@ function formatUniswapPoolData(rawData) {
  * @param {Object<string, Array<Object>>} apyTvlData - Pool data with keys as pool names and values
  *                                                     as arrays of pool data objects.
  * @returns {Array<Object<string, Array<Object>>>} [APY data object, TVL data object] with
- *                                                 formatted pool data.
+ *                                                 formatted pool data. Pool data objects
+ *                                                 may be empty if the input is invalid.
  */
 export function processPoolDataResponse(apyTvlData) {
   const processedApyData = {};
   const processedTvlData = {};
+
+  if (
+    !apyTvlData ||
+    typeof apyTvlData !== 'object' ||
+    Array.isArray(apyTvlData)
+  ) {
+    console.error('apyTvlData must be a non-null object');
+    return [processedApyData, processedTvlData];
+  }
+
   Object.entries(apyTvlData).forEach(([poolName, data]) => {
     if (!Array.isArray(data)) {
       console.error(`Data for pool ${poolName} is not an array`);
       return;
     }
     if (poolName === 'lidoEth') {
-      processedApyData[poolName] = formatApyData(data);
+      processedApyData[poolName] = formatPoolData(data, {
+        valueField: 'apy',
+        outputField: 'apyPercentage',
+        decimalPlaces: 2,
+      });
     } else {
-      processedTvlData[poolName] = formatTvlData(data);
+      processedTvlData[poolName] = formatPoolData(data, {
+        valueField: 'tvlUsd',
+        outputField: 'tvlUsd',
+        decimalPlaces: 6,
+      });
     }
   });
   return [processedApyData, processedTvlData];
@@ -190,8 +220,13 @@ export function processPoolDataResponse(apyTvlData) {
  *                                                           and values as arrays of
  *                                                           [timestamp, price] pairs.
  * @returns {Object<string, Array<Object>>} Token data with formatted price objects.
+ *                                          Empty object if the input is invalid.
  */
 export function processPriceDataResponse(priceData) {
+  if (!priceData || typeof priceData !== 'object' || Array.isArray(priceData)) {
+    console.error('priceData must be a non-null object');
+    return {};
+  }
   return Object.fromEntries(
     Object.entries(priceData).map(([tokenName, data]) => {
       if (!Array.isArray(data)) {
@@ -208,8 +243,17 @@ export function processPriceDataResponse(priceData) {
  * @param {Object<string, Array<Object>>} uniswapPoolsData - Pool data with keys as pool names and
  *                                                           values as arrays of pool data objects.
  * @returns {Object<string, Array<Object>>} Pool data with formatted objects.
+ *                                          Empty object if the input is invalid.
  */
 export function processUniswapPoolDataResponse(uniswapPoolsData) {
+  if (
+    !uniswapPoolsData ||
+    typeof uniswapPoolsData !== 'object' ||
+    Array.isArray(uniswapPoolsData)
+  ) {
+    console.error('uniswapPoolsData must be a non-null object');
+    return {};
+  }
   return Object.fromEntries(
     Object.entries(uniswapPoolsData).map(([poolName, data]) => {
       if (!Array.isArray(data)) {
@@ -230,7 +274,7 @@ export function processUniswapPoolDataResponse(uniswapPoolsData) {
  *                                          empty object if input is invalid.
  */
 export function removeDuplicateTimestamps(data) {
-  if (typeof data !== 'object' || data === null) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
     console.error('Invalid data: must be a non-null object');
     return {};
   }
@@ -246,7 +290,7 @@ export function removeDuplicateTimestamps(data) {
       if (
         element &&
         typeof element.timestamp === 'string' &&
-        !Number.isNaN(new Date(element.timestamp))
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(element.timestamp)
       ) {
         lastOccurrences.set(element.timestamp, element);
       } else {
@@ -270,13 +314,13 @@ export function removeDuplicateTimestamps(data) {
  *                                          input is invalid.
  */
 export function trimData(data, maxLength = 365) {
-  if (typeof data !== 'object' || data === null) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
     console.error('Invalid data: must be a non-null object');
     return {};
   }
   if (!Number.isInteger(maxLength) || maxLength < 0) {
     console.error(
-      `Invalid maxLength: ${maxLength}, must be a non-negative integer`,
+      `Invalid maxLength: ${maxLength}, must be a non-negative integer; returning original data`,
     );
     return data;
   }
@@ -300,10 +344,11 @@ export function trimData(data, maxLength = 365) {
  * @param {Object<string, Array<{timestamp: string}>>} data - Object with arrays of objects
  *                                                            containing 'timestamp' strings.
  * @returns {Object<string, Array<string>>} Object mapping keys to arrays of missing date
- *                                          ISO strings.
+ *                                          ISO strings. Empty object if input is invalid or
+ *                                          does not contain any missing dates.
  */
 export function findMissingDates(data) {
-  if (typeof data !== 'object' || data === null) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
     console.error('Invalid data: must be a non-null object');
     return {};
   }
@@ -318,7 +363,7 @@ export function findMissingDates(data) {
         if (
           r &&
           typeof r.timestamp === 'string' &&
-          !Number.isNaN(new Date(r.timestamp))
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r.timestamp)
         ) {
           const d = new Date(r.timestamp);
           return new Date(
@@ -352,42 +397,16 @@ export function findMissingDates(data) {
 }
 
 /**
- * Calculates a date a specified number of days before the given date.
+ * Calculates a date a specified number of days before or after the given date.
  * @param {Date} date - Starting date.
- * @param {number} numDays - Non-negative integer days to subtract.
+ * @param {number} numDays - Integer days to offset (positive for after, negative for before).
  * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
  */
-function findDateBefore(date, numDays) {
+export function findDateOffset(date, numDays) {
   if (
     !(date instanceof Date) ||
     Number.isNaN(date.getTime()) ||
-    !Number.isInteger(numDays) ||
-    numDays < 0
-  ) {
-    console.warn(`Invalid inputs: date=${date}, numDays=${numDays}`);
-    return null;
-  }
-  return new Date(
-    Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate() - numDays,
-    ),
-  ).toISOString();
-}
-
-/**
- * Calculates a date a specified number of days after the given date.
- * @param {Date} date - Starting date.
- * @param {number} numDays - Non-negative integer days to add.
- * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
- */
-function findDateAfter(date, numDays) {
-  if (
-    !(date instanceof Date) ||
-    Number.isNaN(date.getTime()) ||
-    !Number.isInteger(numDays) ||
-    numDays < 0
+    !Number.isInteger(numDays)
   ) {
     console.warn(`Invalid inputs: date=${date}, numDays=${numDays}`);
     return null;
@@ -402,13 +421,41 @@ function findDateAfter(date, numDays) {
 }
 
 /**
+ * Calculates a date a specified number of days before the given date.
+ * @param {Date} date - Starting date.
+ * @param {number} numDays - Non-negative integer days to subtract.
+ * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
+ */
+export function findDateBefore(date, numDays) {
+  if (numDays < 0) {
+    console.warn(`Invalid numDays: ${numDays}, must be non-negative`);
+    return null;
+  }
+  return findDateOffset(date, -numDays);
+}
+
+/**
+ * Calculates a date a specified number of days after the given date.
+ * @param {Date} date - Starting date.
+ * @param {number} numDays - Non-negative integer days to add.
+ * @returns {string|null} ISO string of the resulting date, or null if inputs are invalid.
+ */
+export function findDateAfter(date, numDays) {
+  if (numDays < 0) {
+    console.warn(`Invalid numDays: ${numDays}, must be non-negative`);
+    return null;
+  }
+  return findDateOffset(date, numDays);
+}
+
+/**
  * Finds up to two valid dates before and after a missing date within a maximum number of days.
  * @param {Date} missingDate - The missing date.
  * @param {string[]} timestamps - Array of existing ISO timestamp strings.
  * @param {number} [maxDays=7] - Maximum days to search (positive integer).
  * @returns {[string[], string[]]} Two arrays: dates before and after the missing date.
  */
-function findValidDates(missingDate, timestamps, maxDays = 7) {
+export function findValidDates(missingDate, timestamps, maxDays = 7) {
   if (
     !(missingDate instanceof Date) ||
     Number.isNaN(missingDate.getTime()) ||
@@ -438,7 +485,7 @@ function findValidDates(missingDate, timestamps, maxDays = 7) {
       if (afterDay && timestampSet.has(afterDay)) afterDates.push(afterDay);
     }
   }
-  return [beforeDates.slice(0, 2), afterDates.slice(0, 2)];
+  return [beforeDates, afterDates];
 }
 
 /**
@@ -448,7 +495,7 @@ function findValidDates(missingDate, timestamps, maxDays = 7) {
  *                                          key-value pairs.
  * @returns {Object<string, Array<number>>} Metrics object with arrays of values per metric.
  */
-function getMetrics(validDates, recordMap) {
+export function getMetrics(validDates, recordMap) {
   if (!Array.isArray(validDates) || !(recordMap instanceof Map)) {
     console.warn(
       `Invalid inputs: validDates=${validDates}, recordMap=${recordMap}`,
@@ -476,8 +523,13 @@ function getMetrics(validDates, recordMap) {
  * @param {Object<string, number[]>} metricsAfter - Metrics after the missing date.
  * @returns {Object<string, number>} Simulated metrics as integers.
  */
-function simulateMetrics(metricsBefore, metricsAfter) {
-  if (typeof metricsBefore !== 'object' || typeof metricsAfter !== 'object') {
+export function simulateMetrics(metricsBefore, metricsAfter) {
+  if (
+    typeof metricsBefore !== 'object' ||
+    typeof metricsAfter !== 'object' ||
+    Array.isArray(metricsBefore) ||
+    Array.isArray(metricsAfter)
+  ) {
     console.warn(
       `Invalid inputs: metricsBefore=${metricsBefore}, metricsAfter=${metricsAfter}`,
     );
@@ -491,10 +543,14 @@ function simulateMetrics(metricsBefore, metricsAfter) {
 
   Array.from(allMetrics).forEach((metric) => {
     const beforeValues = Array.isArray(metricsBefore[metric])
-      ? metricsBefore[metric].filter((v) => typeof v === 'number')
+      ? metricsBefore[metric].filter(
+          (v) => typeof v === 'number' && !Number.isNaN(v),
+        )
       : [];
     const afterValues = Array.isArray(metricsAfter[metric])
-      ? metricsAfter[metric].filter((v) => typeof v === 'number')
+      ? metricsAfter[metric].filter(
+          (v) => typeof v === 'number' && !Number.isNaN(v),
+        )
       : [];
     let simulatedValue;
 
@@ -535,6 +591,8 @@ export function fillMissingDates(data, missingDates) {
   if (
     typeof data !== 'object' ||
     typeof missingDates !== 'object' ||
+    Array.isArray(data) ||
+    Array.isArray(missingDates) ||
     data === null ||
     missingDates === null
   ) {
@@ -606,10 +664,12 @@ export function fillMissingDates(data, missingDates) {
  * @param {Object<string, Array<{timestamp: string}>>} uniswapPoolsData - Uniswap data per pool.
  * @returns {boolean} True if timestamps align, false otherwise.
  */
-function checkTimestampAlignment(tvlData, uniswapPoolsData) {
+export function checkTimestampAlignment(tvlData, uniswapPoolsData) {
   if (
     typeof tvlData !== 'object' ||
     typeof uniswapPoolsData !== 'object' ||
+    Array.isArray(tvlData) ||
+    Array.isArray(uniswapPoolsData) ||
     tvlData === null ||
     uniswapPoolsData === null
   ) {
@@ -705,7 +765,11 @@ export function formatLiquidityPoolData(tvlData, uniswapPoolsData) {
  * }>>} Price data with symbols.
  */
 export function addSymbolToPriceData(priceData) {
-  if (typeof priceData !== 'object' || priceData === null) {
+  if (
+    typeof priceData !== 'object' ||
+    Array.isArray(priceData) ||
+    priceData === null
+  ) {
     console.error('Invalid priceData: must be a non-null object');
     return {};
   }
